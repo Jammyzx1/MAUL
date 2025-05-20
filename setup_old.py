@@ -15,7 +15,7 @@ install_requires = [
     "tqdm==4.62.3",
     "torchani==2.2",
     "uncertainty-toolbox==0.1.0",
-    "seaborn==0.11.2"
+    "seaborn==0.11.2",
 ]
 
 #  (Modified ANI with Uncertainty Levels)
@@ -23,14 +23,12 @@ setuptools.setup(
     name="maul",
     version="1.0",
     author="James McDonagh, Clyde Fare, Ravikanth Tadikonda and Zeynep Sumer",
-    author_email="james.mcdonagh@uk.ibm.com, clyde.fare@ibm.com, ravikanth.tadikonda@stfc.ac.uk and zsumer@ibm.com"
+    author_email="james.mcdonagh@uk.ibm.com, clyde.fare@ibm.com, ravikanth.tadikonda@stfc.ac.uk and zsumer@ibm.com",
     description="BNN version of the ANI neural potential library",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     license="All rights reserved",
-    classifiers=[
-        "Programming Language :: Python :: 3.9"
-    ],
-    install_requires=install_requires
+    classifiers=["Programming Language :: Python :: 3.9"],
+    install_requires=install_requires,
 )

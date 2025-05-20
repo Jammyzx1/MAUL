@@ -21,14 +21,17 @@ __title__ = os.path.basename(__file__)
 
 #### BNN convert functions #####
 
-def bnn_priors(reparameterization: bool = False,
-               flipout: bool = False,
-               prior_mu: float = 0.0,
-               prior_sigma: float = 1.0,
-               posterior_mu_init: float = 0.0,
-               posterior_rho_init: float = -3.0,
-               moped_enable: bool = True,
-               moped_delta: float = 0.2):
+
+def bnn_priors(
+    reparameterization: bool = False,
+    flipout: bool = False,
+    prior_mu: float = 0.0,
+    prior_sigma: float = 1.0,
+    posterior_mu_init: float = 0.0,
+    posterior_rho_init: float = -3.0,
+    moped_enable: bool = True,
+    moped_delta: float = 0.2,
+):
     """
     Function to set prior parameter sets from user inputs. See https://arxiv.org/abs/1906.05323 for details of the
     implementation and the implementation is https://github.com/IntelLabs/bayesian-torch/tree/main/.
@@ -51,8 +54,12 @@ def bnn_priors(reparameterization: bool = False,
     log = logging.getLogger(__name__)
 
     if reparameterization is False and flipout is False:
-        log.error("ERROR - must choose one of flipout (--flipout)  or reparameterization (--reparameterization)")
-        raise RuntimeError("ERROR - user must specify one of reparameterization or flipout Bayesian layer types")
+        log.error(
+            "ERROR - must choose one of flipout (--flipout)  or reparameterization (--reparameterization)"
+        )
+        raise RuntimeError(
+            "ERROR - user must specify one of reparameterization or flipout Bayesian layer types"
+        )
 
     elif reparameterization is True:
         bnn_prior_parameters = {
@@ -75,17 +82,21 @@ def bnn_priors(reparameterization: bool = False,
             "moped_delta": moped_delta,
         }
     else:
-        log.warning("Something unforeseen has gone wrong building the Bayesian options check your inputs")
+        log.warning(
+            "Something unforeseen has gone wrong building the Bayesian options check your inputs"
+        )
         bnn_prior_parameters = {}
 
     return bnn_prior_parameters
 
 
-def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
-                                bnn_prior: dict,
-                                params_prior: dict,
-                                bayesian_depth: Union[int, None] = None,
-                                prior_key: str = ""):
+def convert_dnn_to_bnn_original(
+    model: torch.nn.Sequential,
+    bnn_prior: dict,
+    params_prior: dict,
+    bayesian_depth: Union[int, None] = None,
+    prior_key: str = "",
+):
     """
     Function to convert ani to BNN to a set depth on the network
     :param model : torch.nn.Sequential - pytorch network
@@ -110,13 +121,23 @@ def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
             log.debug("Name: {}".format(name))
             if prior_key == "":
                 prior_key = name
-                convert_dnn_to_bnn_original(model._modules[name], bnn_prior, params_prior,
-                                            bayesian_depth=bayesian_depth, prior_key=prior_key)
+                convert_dnn_to_bnn_original(
+                    model._modules[name],
+                    bnn_prior,
+                    params_prior,
+                    bayesian_depth=bayesian_depth,
+                    prior_key=prior_key,
+                )
                 prior_key = ""
             else:
                 prior_key_mid = prior_key + "." + name
-                convert_dnn_to_bnn_original(model._modules[name], bnn_prior, params_prior,
-                                            bayesian_depth=bayesian_depth, prior_key=prior_key_mid)
+                convert_dnn_to_bnn_original(
+                    model._modules[name],
+                    bnn_prior,
+                    params_prior,
+                    bayesian_depth=bayesian_depth,
+                    prior_key=prior_key_mid,
+                )
 
         elif "Conv" in model._modules[name].__class__.__name__:
             log.debug("'Conv' in model._modules[name].__class__.__name__: True")
@@ -128,25 +149,33 @@ def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
                 if params_prior is not None:
                     # Set prior to match to current distribution NOTE MOPED WILL COPY ALL PARAMETER DISTRIBUTIONS
                     bnn_prior["prior_mu"] = params_prior[local_prior_key]["weight_mean"]
-                    bnn_prior["prior_sigma"] = params_prior[local_prior_key]["weight_std"]
-                    bnn_prior["posterior_mu_init"] = params_prior[local_prior_key]["weight_mean"]
+                    bnn_prior["prior_sigma"] = params_prior[local_prior_key][
+                        "weight_std"
+                    ]
+                    bnn_prior["posterior_mu_init"] = params_prior[local_prior_key][
+                        "weight_mean"
+                    ]
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]),
+                )
 
             elif int(name) >= bayesian_depth:
 
                 if params_prior is not None:
                     # Set prior to match to current distribution NOTE MOPED WILL COPY ALL PARAMETER DISTRIBUTIONS
                     bnn_prior["prior_mu"] = params_prior[local_prior_key]["weight_mean"]
-                    bnn_prior["prior_sigma"] = params_prior[local_prior_key]["weight_std"]
+                    bnn_prior["prior_sigma"] = params_prior[local_prior_key][
+                        "weight_std"
+                    ]
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]),
+                )
 
             else:
                 pass
@@ -162,19 +191,30 @@ def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]),
+                )
 
-                log.info(f"AFTER BNN CONVERTER LAYER NAME: {model._modules[name].__class__.__name__}")
+                log.info(
+                    f"AFTER BNN CONVERTER LAYER NAME: {model._modules[name].__class__.__name__}"
+                )
                 log.info(f"weights\n{model._modules[name].rho_weight.data}")
                 log.info(f"bias\n{model._modules[name].rho_bias.data}")
 
                 if params_prior is not None:
                     # Set prior to match to current distribution NOTE MOPED WILL COPY ALL PARAMETER DISTRIBUTIONS
-                    model._modules[name].mu_weight.data = params_prior[local_prior_key]["weight_mean"]
-                    model._modules[name].rho_weight.data = params_prior[local_prior_key]["weight_rho"]
+                    model._modules[name].mu_weight.data = params_prior[local_prior_key][
+                        "weight_mean"
+                    ]
+                    model._modules[name].rho_weight.data = params_prior[
+                        local_prior_key
+                    ]["weight_rho"]
                     if bnn_layer.mu_bias is not None:
-                        model._modules[name].mu_bias.data = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].rho_bias.data = params_prior[local_prior_key]["bias_rho"]
+                        model._modules[name].mu_bias.data = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].rho_bias.data = params_prior[
+                            local_prior_key
+                        ]["bias_rho"]
 
             # int = apply to the layer specified by int and all subsequent layers
             elif int(name) >= bayesian_depth:
@@ -182,20 +222,32 @@ def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
                 if params_prior is not None:
                     # Set prior to match to current distribution NOTE MOPED WILL COPY ALL PARAMETER DISTRIBUTIONS
                     log.debug("params_prior.keys() {}".format(params_prior))
-                    log.debug("params_prior[{}].keys() {}".format(local_prior_key,
-                                                                  params_prior[local_prior_key].keys()))
-                    log.debug("params_prior[{}]['weight_mean'] {}".format(local_prior_key,
-                                                                          params_prior[local_prior_key]["weight_mean"]))
-                    log.debug("params_prior[{}]['weight_std'] {}".format(local_prior_key,
-                                                                         params_prior[local_prior_key]["weight_std"]))
+                    log.debug(
+                        "params_prior[{}].keys() {}".format(
+                            local_prior_key, params_prior[local_prior_key].keys()
+                        )
+                    )
+                    log.debug(
+                        "params_prior[{}]['weight_mean'] {}".format(
+                            local_prior_key,
+                            params_prior[local_prior_key]["weight_mean"],
+                        )
+                    )
+                    log.debug(
+                        "params_prior[{}]['weight_std'] {}".format(
+                            local_prior_key, params_prior[local_prior_key]["weight_std"]
+                        )
+                    )
                     bnn_prior["prior_mu"] = params_prior[local_prior_key]["weight_mean"]
-                    bnn_prior["prior_sigma"] = params_prior[local_prior_key]["weight_std"]
+                    bnn_prior["prior_sigma"] = params_prior[local_prior_key][
+                        "weight_std"
+                    ]
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]))
-
+                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]),
+                )
 
             else:
                 pass
@@ -210,24 +262,29 @@ def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
                 if params_prior is not None:
                     # Set prior to match to current distribution NOTE MOPED WILL COPY ALL PARAMETER DISTRIBUTIONS
                     bnn_prior["prior_mu"] = params_prior[local_prior_key]["weight_mean"]
-                    bnn_prior["prior_sigma"] = params_prior[local_prior_key]["weight_std"]
+                    bnn_prior["prior_sigma"] = params_prior[local_prior_key][
+                        "weight_std"
+                    ]
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]))
-
+                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]),
+                )
 
             elif int(name) >= bayesian_depth:
                 if params_prior is not None:
                     # Set prior to match to current distribution NOTE MOPED WILL COPY ALL PARAMETER DISTRIBUTIONS
                     bnn_prior["prior_mu"] = params_prior[local_prior_key]["weight_mean"]
-                    bnn_prior["prior_sigma"] = params_prior[local_prior_key]["weight_std"]
+                    bnn_prior["prior_sigma"] = params_prior[local_prior_key][
+                        "weight_std"
+                    ]
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]),
+                )
 
             else:
                 pass
@@ -235,13 +292,15 @@ def convert_dnn_to_bnn_original(model: torch.nn.Sequential,
             pass
 
 
-def convert_dnn_to_bnn(model: torch.nn.Sequential,
-                       bnn_prior: dict,
-                       params_prior: dict,
-                       bayesian_depth: Union[int, None] = None,
-                       set_prior_explicitly: bool = False,
-                       set_rho_explicitly: bool = False,
-                       prior_key: str = ""):
+def convert_dnn_to_bnn(
+    model: torch.nn.Sequential,
+    bnn_prior: dict,
+    params_prior: dict,
+    bayesian_depth: Union[int, None] = None,
+    set_prior_explicitly: bool = False,
+    set_rho_explicitly: bool = False,
+    prior_key: str = "",
+):
     """
     Function to convert ani to BNN to a set depth on the network
     :param model : torch.nn.Sequential - pytorch network
@@ -268,23 +327,27 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
             log.debug("Prior key: {}".format(prior_key))
             if prior_key == "":
                 prior_key = name
-                convert_dnn_to_bnn(model._modules[name],
-                                   bnn_prior,
-                                   params_prior,
-                                   bayesian_depth=bayesian_depth,
-                                   set_prior_explicitly=set_prior_explicitly,
-                                   set_rho_explicitly=set_rho_explicitly,
-                                   prior_key=prior_key)
+                convert_dnn_to_bnn(
+                    model._modules[name],
+                    bnn_prior,
+                    params_prior,
+                    bayesian_depth=bayesian_depth,
+                    set_prior_explicitly=set_prior_explicitly,
+                    set_rho_explicitly=set_rho_explicitly,
+                    prior_key=prior_key,
+                )
                 prior_key = ""
             else:
                 prior_key_mid = prior_key + "." + name
-                convert_dnn_to_bnn(model._modules[name],
-                                   bnn_prior,
-                                   params_prior,
-                                   bayesian_depth=bayesian_depth,
-                                   set_prior_explicitly=set_prior_explicitly,
-                                   set_rho_explicitly=set_rho_explicitly,
-                                   prior_key=prior_key_mid)
+                convert_dnn_to_bnn(
+                    model._modules[name],
+                    bnn_prior,
+                    params_prior,
+                    bayesian_depth=bayesian_depth,
+                    set_prior_explicitly=set_prior_explicitly,
+                    set_rho_explicitly=set_rho_explicitly,
+                    prior_key=prior_key_mid,
+                )
 
         elif re.search(r"^Conv", model._modules[name].__class__.__name__):
             log.debug("'Conv' in model._modules[name].__class__.__name__: True")
@@ -296,16 +359,25 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]),
+                )
 
                 if params_prior is not None:
                     # Here we set the prior to match to the values we specify. Ideally this keeps the model in
                     # the same ball park.
                     if set_prior_explicitly is True:
-                        model._modules[name].prior_weight_mu = params_prior[local_prior_key]["weight_mean"]
-                        model._modules[name].prior_weight_sigma = params_prior[local_prior_key]["weight_std"]
-                        model._modules[name].prior_bias_mu = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].prior_bias_sigma = params_prior[local_prior_key]["bias_std"]
+                        model._modules[name].prior_weight_mu = params_prior[
+                            local_prior_key
+                        ]["weight_mean"]
+                        model._modules[name].prior_weight_sigma = params_prior[
+                            local_prior_key
+                        ]["weight_std"]
+                        model._modules[name].prior_bias_mu = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].prior_bias_sigma = params_prior[
+                            local_prior_key
+                        ]["bias_std"]
 
                     # TODO: It is not exactly clear in the code if all of these should be set to these values we should
                     #  check
@@ -315,49 +387,72 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # passed through a soft plus function ln(1 + e^(weight_rho)) we get the std (weight_std)
 
                     # 1. Set the mean of the weights distribution
-                    model._modules[name].mu_weight.data.copy_(params_prior[local_prior_key]["weight_mean"])
+                    model._modules[name].mu_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_mean"]
+                    )
 
                     # 2. Set the variance of the weights distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                      ["weight_mean"],
-                                                                                      bnn_prior["moped_delta"]))
+                        model._modules[name].rho_weight.data.copy_(
+                            dnn_to_bnn.get_rho(
+                                params_prior[local_prior_key]["weight_mean"],
+                                bnn_prior["moped_delta"],
+                            )
+                        )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
 
                         # 3. Set the mean of the bias distribution
-                        model._modules[name].mu_bias.data.copy_(params_prior[local_prior_key]["bias_mean"])
+                        model._modules[name].mu_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_mean"]
+                        )
                         if set_rho_explicitly is False:
                             # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                        ["bias_mean"],
-                                                                                        bnn_prior["moped_delta"]))
+                            model._modules[name].rho_bias.data.copy_(
+                                dnn_to_bnn.get_rho(
+                                    params_prior[local_prior_key]["bias_mean"],
+                                    bnn_prior["moped_delta"],
+                                )
+                            )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
             elif int(name) >= bayesian_depth:
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_conv_layer(bnn_prior, model._modules[name]),
+                )
 
                 if params_prior is not None:
                     # Here we set the prior to match to the values we specify. Ideally this keeps the model in
                     # the same ball park.
                     if set_prior_explicitly is True:
-                        model._modules[name].prior_weight_mu = params_prior[local_prior_key]["weight_mean"]
-                        model._modules[name].prior_weight_sigma = params_prior[local_prior_key]["weight_std"]
-                        model._modules[name].prior_bias_mu = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].prior_bias_sigma = params_prior[local_prior_key]["bias_std"]
+                        model._modules[name].prior_weight_mu = params_prior[
+                            local_prior_key
+                        ]["weight_mean"]
+                        model._modules[name].prior_weight_sigma = params_prior[
+                            local_prior_key
+                        ]["weight_std"]
+                        model._modules[name].prior_bias_mu = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].prior_bias_sigma = params_prior[
+                            local_prior_key
+                        ]["bias_std"]
 
                     # TODO: It is not exactly clear in the code if all of these should be set to these values we should
                     #  check
@@ -367,38 +462,52 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # passed through a soft plus function ln(1 + e^(weight_rho)) we get the std (weight_std)
 
                     # 1. Set the mean of the weights distribution
-                    model._modules[name].mu_weight.data.copy_(params_prior[local_prior_key]["weight_mean"])
+                    model._modules[name].mu_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_mean"]
+                    )
 
                     # 2. Set the variance of the weights distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                      ["weight_mean"],
-                                                                                      bnn_prior["moped_delta"]))
+                        model._modules[name].rho_weight.data.copy_(
+                            dnn_to_bnn.get_rho(
+                                params_prior[local_prior_key]["weight_mean"],
+                                bnn_prior["moped_delta"],
+                            )
+                        )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
 
                         # 3. Set the mean of the bias distribution
-                        model._modules[name].mu_bias.data.copy_(params_prior[local_prior_key]["bias_mean"])
+                        model._modules[name].mu_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_mean"]
+                        )
                         if set_rho_explicitly is False:
                             # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                        ["bias_mean"],
-                                                                                        bnn_prior["moped_delta"]))
+                            model._modules[name].rho_bias.data.copy_(
+                                dnn_to_bnn.get_rho(
+                                    params_prior[local_prior_key]["bias_mean"],
+                                    bnn_prior["moped_delta"],
+                                )
+                            )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
             else:
                 pass
 
-        elif re.search(r"^Linear",  model._modules[name].__class__.__name__):
+        elif re.search(r"^Linear", model._modules[name].__class__.__name__):
             log.debug("'Linear' in model._modules[name].__class__.__name__: True")
             local_prior_key = prior_key + "." + name
             log.debug("Prior key {}".format(local_prior_key))
@@ -409,7 +518,8 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]),
+                )
 
                 # log.info(f"AFTER BNN CONVERTER LAYER NAME: {model._modules[name].__class__.__name__}")
                 # log.info(f"weights\n{model._modules[name].rho_weight.data}")
@@ -428,10 +538,18 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # Here we set the prior to match to the values we specify. Ideally this keeps the model in
                     # the same ball park.
                     if set_prior_explicitly is True:
-                        model._modules[name].prior_weight_mu = params_prior[local_prior_key]["weight_mean"]
-                        model._modules[name].prior_weight_sigma = params_prior[local_prior_key]["weight_std"]
-                        model._modules[name].prior_bias_mu = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].prior_bias_sigma = params_prior[local_prior_key]["bias_std"]
+                        model._modules[name].prior_weight_mu = params_prior[
+                            local_prior_key
+                        ]["weight_mean"]
+                        model._modules[name].prior_weight_sigma = params_prior[
+                            local_prior_key
+                        ]["weight_std"]
+                        model._modules[name].prior_bias_mu = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].prior_bias_sigma = params_prior[
+                            local_prior_key
+                        ]["bias_std"]
 
                     # Here we set the weights of the parameter distributions to match to those that we pass
                     # In this case that means that the mean weight is set to the mean value and the variational
@@ -439,35 +557,49 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # passed through a soft plus function ln(1 + e^(weight_rho)) we get the std (weight_std)
 
                     # 1. Set the mean of the weights distribution
-                    model._modules[name].mu_weight.data.copy_(params_prior[local_prior_key]["weight_mean"])
+                    model._modules[name].mu_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_mean"]
+                    )
 
                     # 2. Set the variance of the weights distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in note if we pass them in they should be transformed as rho values from
                     # standard deviations.
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                 ["weight_mean"],
-                                                                                 bnn_prior["moped_delta"]))
+                        model._modules[name].rho_weight.data.copy_(
+                            dnn_to_bnn.get_rho(
+                                params_prior[local_prior_key]["weight_mean"],
+                                bnn_prior["moped_delta"],
+                            )
+                        )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
 
                         # 3. Set the mean of the bias distribution
-                        model._modules[name].mu_bias.data.copy_(params_prior[local_prior_key]["bias_mean"])
+                        model._modules[name].mu_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_mean"]
+                        )
                         if set_rho_explicitly is False:
                             # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                     ["bias_mean"],
-                                                                                     bnn_prior["moped_delta"]))
+                            model._modules[name].rho_bias.data.copy_(
+                                dnn_to_bnn.get_rho(
+                                    params_prior[local_prior_key]["bias_mean"],
+                                    bnn_prior["moped_delta"],
+                                )
+                            )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in note if we pass them in they should be transformed as rho values from
                         # standard deviations.
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
             # int = apply to the layer specified by int and all subsequent layers
             elif int(name) >= bayesian_depth:
@@ -475,16 +607,25 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_linear_layer(bnn_prior, model._modules[name]),
+                )
 
                 if params_prior is not None:
                     # Here we set the prior to match to the values we specify. Ideally this keeps the model in
                     # the same ball park.
                     if set_prior_explicitly is True:
-                        model._modules[name].prior_weight_mu = params_prior[local_prior_key]["weight_mean"]
-                        model._modules[name].prior_weight_sigma = params_prior[local_prior_key]["weight_std"]
-                        model._modules[name].prior_bias_mu = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].prior_bias_sigma = params_prior[local_prior_key]["bias_std"]
+                        model._modules[name].prior_weight_mu = params_prior[
+                            local_prior_key
+                        ]["weight_mean"]
+                        model._modules[name].prior_weight_sigma = params_prior[
+                            local_prior_key
+                        ]["weight_std"]
+                        model._modules[name].prior_bias_mu = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].prior_bias_sigma = params_prior[
+                            local_prior_key
+                        ]["bias_std"]
 
                     # TODO: It is not exactly clear in the code if all of these should be set to these values we should
                     #  check
@@ -494,33 +635,47 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # passed through a soft plus function ln(1 + e^(weight_rho)) we get the std (weight_std)
 
                     # 1. Set the mean of the weights distribution
-                    model._modules[name].mu_weight.data.copy_(params_prior[local_prior_key]["weight_mean"])
+                    model._modules[name].mu_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_mean"]
+                    )
 
                     # 2. Set the variance of the weights distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                      ["weight_mean"],
-                                                                                      bnn_prior["moped_delta"]))
+                        model._modules[name].rho_weight.data.copy_(
+                            dnn_to_bnn.get_rho(
+                                params_prior[local_prior_key]["weight_mean"],
+                                bnn_prior["moped_delta"],
+                            )
+                        )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
 
                         # 3. Set the mean of the bias distribution
-                        model._modules[name].mu_bias.data.copy_(params_prior[local_prior_key]["bias_mean"])
+                        model._modules[name].mu_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_mean"]
+                        )
                         if set_rho_explicitly is False:
                             # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                        ["bias_mean"],
-                                                                                        bnn_prior["moped_delta"]))
+                            model._modules[name].rho_bias.data.copy_(
+                                dnn_to_bnn.get_rho(
+                                    params_prior[local_prior_key]["bias_mean"],
+                                    bnn_prior["moped_delta"],
+                                )
+                            )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
             else:
                 pass
@@ -535,16 +690,25 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]),
+                )
 
                 if params_prior is not None:
                     # Here we set the prior to match to the values we specify. Ideally this keeps the model in
                     # the same ball park.
                     if set_prior_explicitly is True:
-                        model._modules[name].prior_weight_mu = params_prior[local_prior_key]["weight_mean"]
-                        model._modules[name].prior_weight_sigma = params_prior[local_prior_key]["weight_std"]
-                        model._modules[name].prior_bias_mu = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].prior_bias_sigma = params_prior[local_prior_key]["bias_std"]
+                        model._modules[name].prior_weight_mu = params_prior[
+                            local_prior_key
+                        ]["weight_mean"]
+                        model._modules[name].prior_weight_sigma = params_prior[
+                            local_prior_key
+                        ]["weight_std"]
+                        model._modules[name].prior_bias_mu = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].prior_bias_sigma = params_prior[
+                            local_prior_key
+                        ]["bias_std"]
 
                     # TODO: It is not exactly clear in the code if all of these should be set to these values we should
                     #  check
@@ -554,50 +718,72 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # passed through a soft plus function ln(1 + e^(weight_rho)) we get the std (weight_std)
 
                     # 1. Set the mean of the weights distribution
-                    model._modules[name].mu_weight.data.copy_(params_prior[local_prior_key]["weight_mean"])
+                    model._modules[name].mu_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_mean"]
+                    )
 
                     # 2. Set the variance of the weights distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                      ["weight_mean"],
-                                                                                      bnn_prior["moped_delta"]))
+                        model._modules[name].rho_weight.data.copy_(
+                            dnn_to_bnn.get_rho(
+                                params_prior[local_prior_key]["weight_mean"],
+                                bnn_prior["moped_delta"],
+                            )
+                        )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
 
                         # 3. Set the mean of the bias distribution
-                        model._modules[name].mu_bias.data.copy_(params_prior[local_prior_key]["bias_mean"])
+                        model._modules[name].mu_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_mean"]
+                        )
                         if set_rho_explicitly is False:
                             # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                        ["bias_mean"],
-                                                                                        bnn_prior["moped_delta"]))
+                            model._modules[name].rho_bias.data.copy_(
+                                dnn_to_bnn.get_rho(
+                                    params_prior[local_prior_key]["bias_mean"],
+                                    bnn_prior["moped_delta"],
+                                )
+                            )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
-
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
             elif int(name) >= bayesian_depth:
 
                 setattr(
                     model,
                     name,
-                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]))
+                    dnn_to_bnn.bnn_lstm_layer(bnn_prior, model._modules[name]),
+                )
 
                 if params_prior is not None:
                     # Here we set the prior to match to the values we specify. Ideally this keeps the model in
                     # the same ball park.
                     if set_prior_explicitly is True:
-                        model._modules[name].prior_weight_mu = params_prior[local_prior_key]["weight_mean"]
-                        model._modules[name].prior_weight_sigma = params_prior[local_prior_key]["weight_std"]
-                        model._modules[name].prior_bias_mu = params_prior[local_prior_key]["bias_mean"]
-                        model._modules[name].prior_bias_sigma = params_prior[local_prior_key]["bias_std"]
+                        model._modules[name].prior_weight_mu = params_prior[
+                            local_prior_key
+                        ]["weight_mean"]
+                        model._modules[name].prior_weight_sigma = params_prior[
+                            local_prior_key
+                        ]["weight_std"]
+                        model._modules[name].prior_bias_mu = params_prior[
+                            local_prior_key
+                        ]["bias_mean"]
+                        model._modules[name].prior_bias_sigma = params_prior[
+                            local_prior_key
+                        ]["bias_std"]
 
                     # TODO: It is not exactly clear in the code if all of these should be set to these values we should
                     #  check
@@ -607,46 +793,63 @@ def convert_dnn_to_bnn(model: torch.nn.Sequential,
                     # passed through a soft plus function ln(1 + e^(weight_rho)) we get the std (weight_std)
 
                     # 1. Set the mean of the weights distribution
-                    model._modules[name].mu_weight.data.copy_(params_prior[local_prior_key]["weight_mean"])
+                    model._modules[name].mu_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_mean"]
+                    )
 
                     # 2. Set the variance of the weights distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                      ["weight_mean"],
-                                                                                      bnn_prior["moped_delta"]))
+                        model._modules[name].rho_weight.data.copy_(
+                            dnn_to_bnn.get_rho(
+                                params_prior[local_prior_key]["weight_mean"],
+                                bnn_prior["moped_delta"],
+                            )
+                        )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
 
                         # 3. Set the mean of the bias distribution
-                        model._modules[name].mu_bias.data.copy_(params_prior[local_prior_key]["bias_mean"])
+                        model._modules[name].mu_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_mean"]
+                        )
                         if set_rho_explicitly is False:
                             # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(dnn_to_bnn.get_rho(params_prior[local_prior_key]
-                                                                                        ["bias_mean"],
-                                                                                        bnn_prior["moped_delta"]))
+                            model._modules[name].rho_bias.data.copy_(
+                                dnn_to_bnn.get_rho(
+                                    params_prior[local_prior_key]["bias_mean"],
+                                    bnn_prior["moped_delta"],
+                                )
+                            )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
             else:
                 pass
         else:
             pass
 
-def update_bnn_variance(model: torch.nn.Sequential,
-                       bnn_prior: dict,
-                       params_prior: dict,
-                       bayesian_depth: Union[int, None] = None,
-                       set_prior_explicitly: bool = False,
-                       set_rho_explicitly: bool = False,
-                       prior_key: str = ""):
+
+def update_bnn_variance(
+    model: torch.nn.Sequential,
+    bnn_prior: dict,
+    params_prior: dict,
+    bayesian_depth: Union[int, None] = None,
+    set_prior_explicitly: bool = False,
+    set_rho_explicitly: bool = False,
+    prior_key: str = "",
+):
     """
     Function to convert ani to BNN to a set depth on the network
     :param model : torch.nn.Sequential - pytorch network
@@ -672,23 +875,27 @@ def update_bnn_variance(model: torch.nn.Sequential,
             log.debug("Name: {}".format(name))
             if prior_key == "":
                 prior_key = name
-                update_bnn_variance(model._modules[name],
-                                   bnn_prior,
-                                   params_prior,
-                                   bayesian_depth=bayesian_depth,
-                                   set_prior_explicitly=set_prior_explicitly,
-                                   set_rho_explicitly=set_rho_explicitly,
-                                   prior_key=prior_key)
+                update_bnn_variance(
+                    model._modules[name],
+                    bnn_prior,
+                    params_prior,
+                    bayesian_depth=bayesian_depth,
+                    set_prior_explicitly=set_prior_explicitly,
+                    set_rho_explicitly=set_rho_explicitly,
+                    prior_key=prior_key,
+                )
                 prior_key = ""
             else:
                 prior_key_mid = prior_key + "." + name
-                update_bnn_variance(model._modules[name],
-                                   bnn_prior,
-                                   params_prior,
-                                   bayesian_depth=bayesian_depth,
-                                   set_prior_explicitly=set_prior_explicitly,
-                                   set_rho_explicitly=set_rho_explicitly,
-                                   prior_key=prior_key_mid)
+                update_bnn_variance(
+                    model._modules[name],
+                    bnn_prior,
+                    params_prior,
+                    bayesian_depth=bayesian_depth,
+                    set_prior_explicitly=set_prior_explicitly,
+                    set_rho_explicitly=set_rho_explicitly,
+                    prior_key=prior_key_mid,
+                )
 
         elif "Conv" in model._modules[name].__class__.__name__:
             log.debug("'Conv' in model._modules[name].__class__.__name__: True")
@@ -707,12 +914,14 @@ def update_bnn_variance(model: torch.nn.Sequential,
                         model._modules[name].rho_weight.data.copy_(
                             dnn_to_bnn.get_rho(
                                 model._modules[name].mu_weight.data,
-                                bnn_prior["moped_delta"]
+                                bnn_prior["moped_delta"],
                             )
                         )
 
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
@@ -723,12 +932,14 @@ def update_bnn_variance(model: torch.nn.Sequential,
                             model._modules[name].rho_bias.data.copy_(
                                 dnn_to_bnn.get_rho(
                                     model._modules[name].mu_bias.data,
-                                    bnn_prior["moped_delta"]
+                                    bnn_prior["moped_delta"],
                                 )
                             )
 
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
                 # int = apply to the layer specified by int and all subsequent layers
                 elif int(name) >= bayesian_depth:
@@ -738,11 +949,13 @@ def update_bnn_variance(model: torch.nn.Sequential,
                         model._modules[name].rho_weight.data.copy_(
                             dnn_to_bnn.get_rho(
                                 model._modules[name].mu_weight.data,
-                                bnn_prior["moped_delta"]
+                                bnn_prior["moped_delta"],
                             )
                         )
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                        model._modules[name].rho_weight.data.copy_(
+                            params_prior[local_prior_key]["weight_rho"]
+                        )
 
                     # If there are biases used in the model set them to the values we have
                     if model._modules[name].mu_bias is not None:
@@ -753,14 +966,16 @@ def update_bnn_variance(model: torch.nn.Sequential,
                             model._modules[name].rho_bias.data.copy_(
                                 dnn_to_bnn.get_rho(
                                     model._modules[name].mu_bias.data,
-                                    bnn_prior["moped_delta"]
+                                    bnn_prior["moped_delta"],
                                 )
                             )
 
                         # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                         # as the values we pass in
                         elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                            model._modules[name].rho_bias.data.copy_(
+                                params_prior[local_prior_key]["bias_rho"]
+                            )
 
                 else:
                     pass
@@ -781,12 +996,14 @@ def update_bnn_variance(model: torch.nn.Sequential,
                     model._modules[name].rho_weight.data.copy_(
                         dnn_to_bnn.get_rho(
                             model._modules[name].mu_weight.data,
-                            bnn_prior["moped_delta"]
+                            bnn_prior["moped_delta"],
                         )
                     )
 
                 elif set_rho_explicitly is True:
-                    model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                    model._modules[name].rho_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_rho"]
+                    )
 
                 # If there are biases used in the model set them to the values we have
                 if model._modules[name].mu_bias is not None:
@@ -797,44 +1014,50 @@ def update_bnn_variance(model: torch.nn.Sequential,
                         model._modules[name].rho_bias.data.copy_(
                             dnn_to_bnn.get_rho(
                                 model._modules[name].mu_bias.data,
-                                bnn_prior["moped_delta"]
+                                bnn_prior["moped_delta"],
                             )
                         )
 
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                        model._modules[name].rho_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_rho"]
+                        )
 
             # int = apply to the layer specified by int and all subsequent layers
             elif int(name) >= bayesian_depth:
 
+                if set_rho_explicitly is False:
+                    # NOTE get_rho multiplies the mean with delta to get the sigma value
+                    model._modules[name].rho_weight.data.copy_(
+                        dnn_to_bnn.get_rho(
+                            model._modules[name].mu_weight.data,
+                            bnn_prior["moped_delta"],
+                        )
+                    )
+                elif set_rho_explicitly is True:
+                    model._modules[name].rho_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_rho"]
+                    )
+
+                # If there are biases used in the model set them to the values we have
+                if model._modules[name].mu_bias is not None:
+
+                    # 3. Set the mean of the bias distribution
                     if set_rho_explicitly is False:
                         # NOTE get_rho multiplies the mean with delta to get the sigma value
-                        model._modules[name].rho_weight.data.copy_(
+                        model._modules[name].rho_bias.data.copy_(
                             dnn_to_bnn.get_rho(
-                                model._modules[name].mu_weight.data,
-                                bnn_prior["moped_delta"]
+                                model._modules[name].mu_bias.data,
+                                bnn_prior["moped_delta"],
                             )
                         )
+
+                    # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
+                    # as the values we pass in
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
-
-                    # If there are biases used in the model set them to the values we have
-                    if model._modules[name].mu_bias is not None:
-
-                        # 3. Set the mean of the bias distribution
-                        if set_rho_explicitly is False:
-                            # NOTE get_rho multiplies the mean with delta to get the sigma value
-                            model._modules[name].rho_bias.data.copy_(
-                                dnn_to_bnn.get_rho(
-                                    model._modules[name].mu_bias.data,
-                                    bnn_prior["moped_delta"]
-                                )
-                            )
-
-                        # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
-                        # as the values we pass in
-                        elif set_rho_explicitly is True:
-                            model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                        model._modules[name].rho_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_rho"]
+                        )
 
             else:
                 pass
@@ -855,12 +1078,14 @@ def update_bnn_variance(model: torch.nn.Sequential,
                     model._modules[name].rho_weight.data.copy_(
                         dnn_to_bnn.get_rho(
                             model._modules[name].mu_weight.data,
-                            bnn_prior["moped_delta"]
+                            bnn_prior["moped_delta"],
                         )
                     )
 
                 elif set_rho_explicitly is True:
-                    model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                    model._modules[name].rho_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_rho"]
+                    )
 
                 # If there are biases used in the model set them to the values we have
                 if model._modules[name].mu_bias is not None:
@@ -871,12 +1096,14 @@ def update_bnn_variance(model: torch.nn.Sequential,
                         model._modules[name].rho_bias.data.copy_(
                             dnn_to_bnn.get_rho(
                                 model._modules[name].mu_bias.data,
-                                bnn_prior["moped_delta"]
+                                bnn_prior["moped_delta"],
                             )
                         )
 
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                        model._modules[name].rho_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_rho"]
+                        )
 
             # int = apply to the layer specified by int and all subsequent layers
             elif int(name) >= bayesian_depth:
@@ -886,11 +1113,13 @@ def update_bnn_variance(model: torch.nn.Sequential,
                     model._modules[name].rho_weight.data.copy_(
                         dnn_to_bnn.get_rho(
                             model._modules[name].mu_weight.data,
-                            bnn_prior["moped_delta"]
+                            bnn_prior["moped_delta"],
                         )
                     )
                 elif set_rho_explicitly is True:
-                    model._modules[name].rho_weight.data.copy_(params_prior[local_prior_key]["weight_rho"])
+                    model._modules[name].rho_weight.data.copy_(
+                        params_prior[local_prior_key]["weight_rho"]
+                    )
 
                 # If there are biases used in the model set them to the values we have
                 if model._modules[name].mu_bias is not None:
@@ -901,22 +1130,24 @@ def update_bnn_variance(model: torch.nn.Sequential,
                         model._modules[name].rho_bias.data.copy_(
                             dnn_to_bnn.get_rho(
                                 model._modules[name].mu_bias.data,
-                                bnn_prior["moped_delta"]
+                                bnn_prior["moped_delta"],
                             )
                         )
 
                     # 4. Set the variance of the bias distribution either (False) as a fraction of the mean or (True)
                     # as the values we pass in
                     elif set_rho_explicitly is True:
-                        model._modules[name].rho_bias.data.copy_(params_prior[local_prior_key]["bias_rho"])
+                        model._modules[name].rho_bias.data.copy_(
+                            params_prior[local_prior_key]["bias_rho"]
+                        )
 
             else:
                 pass
         else:
             pass
 
-def is_bayesian_network(model: torch.nn.Sequential,
-                        prior_key: str = "") -> bool:
+
+def is_bayesian_network(model: torch.nn.Sequential, prior_key: str = "") -> bool:
     """
     Function to check if a model is bayesian.
 
@@ -943,13 +1174,15 @@ def is_bayesian_network(model: torch.nn.Sequential,
             log.debug("Name: {}".format(name))
             if prior_key == "":
                 prior_key = name
-                bayesian = is_bayesian_network(model._modules[name],
-                                   prior_key=prior_key)
+                bayesian = is_bayesian_network(
+                    model._modules[name], prior_key=prior_key
+                )
                 prior_key = ""
             else:
                 prior_key_mid = prior_key + "." + name
-                bayesian = is_bayesian_network(model._modules[name],
-                                prior_key=prior_key_mid)
+                bayesian = is_bayesian_network(
+                    model._modules[name], prior_key=prior_key_mid
+                )
 
         elif "Reparameterization" in model._modules[name].__class__.__name__:
             bayesian = True
@@ -966,21 +1199,24 @@ def is_bayesian_network(model: torch.nn.Sequential,
 
 #### Classes #####
 
+
 class TorchNetwork(object):
     """
     Base class for Pytorch based networks. This base class contains most of the functionality for loading a general
     pytorch network and converting it to a Bayesain network using Bayesian torch.
     """
 
-    def __init__(self,
-                 model: torch.nn.Sequential = None,
-                 bnn_prior: dict = None,
-                 params_prior: dict = None,
-                 bayesian_depth: int = None,
-                 name: str = None,
-                 forces: bool = False,
-                 force_scalar: float = 1.0,
-                 **kwargs):
+    def __init__(
+        self,
+        model: torch.nn.Sequential = None,
+        bnn_prior: dict = None,
+        params_prior: dict = None,
+        bayesian_depth: int = None,
+        name: str = None,
+        forces: bool = False,
+        force_scalar: float = 1.0,
+        **kwargs,
+    ):
         """
         Initialize the class
         :param model: torch.nn.Sequential - Pytorch model
@@ -1017,8 +1253,12 @@ class TorchNetwork(object):
         :return: bool
         """
 
-        if (isinstance(other, TorchNetwork)):
-            return self.name == other.name and self.model == other.model and self.bayesian == other.bayesian
+        if isinstance(other, TorchNetwork):
+            return (
+                self.name == other.name
+                and self.model == other.model
+                and self.bayesian == other.bayesian
+            )
         else:
             return False
 
@@ -1063,11 +1303,15 @@ class TorchNetwork(object):
 
         :return:
         """
-        return True if self.data_parallel is True or self.distrbuted_data_parallel is True else False
+        return (
+            True
+            if self.data_parallel is True or self.distrbuted_data_parallel is True
+            else False
+        )
 
-    def is_bayesian_network(self,
-                            model: torch.nn.Sequential,
-                            prior_key: str = "") -> (bool, bool, bool):
+    def is_bayesian_network(
+        self, model: torch.nn.Sequential, prior_key: str = ""
+    ) -> (bool, bool, bool):
         """
         Function to check if a model is bayesian and which layer types used.
 
@@ -1097,13 +1341,15 @@ class TorchNetwork(object):
                 log.debug("Name: {}".format(name))
                 if prior_key == "":
                     prior_key = name
-                    bayesian = is_bayesian_network(model._modules[name],
-                                                   prior_key=prior_key)
+                    bayesian = is_bayesian_network(
+                        model._modules[name], prior_key=prior_key
+                    )
                     prior_key = ""
                 else:
                     prior_key_mid = prior_key + "." + name
-                    bayesian = is_bayesian_network(model._modules[name],
-                                                   prior_key=prior_key_mid)
+                    bayesian = is_bayesian_network(
+                        model._modules[name], prior_key=prior_key_mid
+                    )
 
             elif "Reparameterization" in model._modules[name].__class__.__name__:
                 bayesian = True
@@ -1119,12 +1365,14 @@ class TorchNetwork(object):
 
         return bayesian, reparameterization, flipout
 
-    def transfer_dnn_to_bnn(self,
-                            bnn_prior: dict,
-                            params_prior: dict,
-                            bayesian_depth: int = None,
-                            set_rho_explicitly: bool = True,
-                            set_prior_explicitly: bool = True):
+    def transfer_dnn_to_bnn(
+        self,
+        bnn_prior: dict,
+        params_prior: dict,
+        bayesian_depth: int = None,
+        set_rho_explicitly: bool = True,
+        set_prior_explicitly: bool = True,
+    ):
         """
         Function to convert ani to BNN to a set depth on the network
         :param bnn_prior: dict - output of chosen prior from bnn_priors
@@ -1144,14 +1392,15 @@ class TorchNetwork(object):
 
         if self.isbayesian is False:
             log.info("Converting model DNN to BNN")
-            convert_dnn_to_bnn(model=self.model,
-                               bnn_prior=bnn_prior,
-                               params_prior=params_prior,
-                               bayesian_depth=bayesian_depth,
-                               set_rho_explicitly=set_rho_explicitly,
-                               set_prior_explicitly=set_prior_explicitly,
-                               prior_key=""
-                               )
+            convert_dnn_to_bnn(
+                model=self.model,
+                bnn_prior=bnn_prior,
+                params_prior=params_prior,
+                bayesian_depth=bayesian_depth,
+                set_rho_explicitly=set_rho_explicitly,
+                set_prior_explicitly=set_prior_explicitly,
+                prior_key="",
+            )
             log.info("Model DNN converted to BNN")
             self.bayesian = True
         else:
@@ -1183,8 +1432,7 @@ class TorchNetwork(object):
         self.model = torch.nn.parallel.DistributedDataParallel(self.model)
         self.distrbuted_data_parallel = True
 
-    def load_pretrained_on_to_model(self,
-                                    pretrained: str):
+    def load_pretrained_on_to_model(self, pretrained: str):
         """
         Function to load a pretrained model on to the equivalent initialized architecture
         :param pretrained: str - file and path to load weights from
@@ -1197,27 +1445,36 @@ class TorchNetwork(object):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         if self.model is None:
-            log.error("ERROR - must initialize model first with equivalent architecture")
+            log.error(
+                "ERROR - must initialize model first with equivalent architecture"
+            )
 
         if self.isbayesian is True:
             log.info("Current model is Bayesian")
         else:
             log.info("Current model is not Bayesian")
 
-        log.info(f"Loading pretrained weights from {self.pretrained} on to current model")
+        log.info(
+            f"Loading pretrained weights from {self.pretrained} on to current model"
+        )
 
         try:
             # Load weights and bias on the default network
             self.model = self.model.to(device)
-            self.model.load_state_dict(torch.load(pretrained, map_location=torch.device(device)))
+            self.model.load_state_dict(
+                torch.load(
+                    pretrained, map_location=torch.device(device), weights_only=False
+                )
+            )
             self.model.eval()
         except KeyError as kerr:
-            log.warning("\nERROR - can not load model key error. Likely you are trying to load a Bayesian or"
-                        " non Bayesian architecture on to the opposite scaffold please check.")
+            log.warning(
+                "\nERROR - can not load model key error. Likely you are trying to load a Bayesian or"
+                " non Bayesian architecture on to the opposite scaffold please check."
+            )
             raise kerr
 
-    def save(self,
-             name: Union[str, None] = None):
+    def save(self, name: Union[str, None] = None):
         """
         Save and store the class
         :param name: str - descrptive name to understand what this instance was for
@@ -1233,8 +1490,7 @@ class TorchNetwork(object):
         with open(f"{'_'.join(name.split())}.pkl", "wb") as fout:
             pickle.dump(self.__dict__, fout)
 
-    def load(self,
-             name: Union[str, None] = None):
+    def load(self, name: Union[str, None] = None):
         """
         read and load the class
         :param name: str - descriptive name used for equivalence checking
@@ -1257,16 +1513,18 @@ class ANI(TorchNetwork):
     specific functions for ANI styled neural potentials.
     """
 
-    def __init__(self,
-                 model: torch.nn.Sequential = None,
-                 bnn_prior: dict = None,
-                 params_prior: dict = None,
-                 bayesian_depth: int = None,
-                 name: str = None,
-                 forces: bool = False,
-                 force_scalar: float = 1.0,
-                 self_energies: list = None,
-                 **kwargs):
+    def __init__(
+        self,
+        model: torch.nn.Sequential = None,
+        bnn_prior: dict = None,
+        params_prior: dict = None,
+        bayesian_depth: int = None,
+        name: str = None,
+        forces: bool = False,
+        force_scalar: float = 1.0,
+        self_energies: list = None,
+        **kwargs,
+    ):
         """
         Initializes the class and all variables used to store information. Some of these may be redundant but are there
         for checking later on if needed. All arguments are used in the base class initialization
@@ -1334,8 +1592,12 @@ class ANI(TorchNetwork):
         :param other: The class ANI to compare
         :return: bool
         """
-        if (isinstance(other, ANI)):
-            return self.name == other.name and self.model == other.model and self.bayesian == other.bayesian
+        if isinstance(other, ANI):
+            return (
+                self.name == other.name
+                and self.model == other.model
+                and self.bayesian == other.bayesian
+            )
         else:
             return False
 
@@ -1362,23 +1624,23 @@ class ANI(TorchNetwork):
         else:
             return True
 
-
-    def build_ani_dnn_model(self,
-                        radial_cutoff: float = 5.2000e+00,
-                        theta_max_rad: float = 3.33794218e+00,
-                        angular_cutoff: float = 3.5000e+00,
-                        etar: float = 1.6000000e+01,
-                        etaa: float = 8.000000,
-                        zeta: float = 3.2000000e+01,
-                        radial_steps: int = 16,
-                        angular_radial_steps: int = 4,
-                        theta_steps: int = 8,
-                        species_order: tuple = ("H", "C", "N", "O"),
-                        networks: tuple = None,
-                        ensemble: int = 1,
-                        use_cuaev: bool = False,
-                        no_species_converter: bool = False
-                        ) -> None:
+    def build_ani_dnn_model(
+        self,
+        radial_cutoff: float = 5.2000e00,
+        theta_max_rad: float = 3.33794218e00,
+        angular_cutoff: float = 3.5000e00,
+        etar: float = 1.6000000e01,
+        etaa: float = 8.000000,
+        zeta: float = 3.2000000e01,
+        radial_steps: int = 16,
+        angular_radial_steps: int = 4,
+        theta_steps: int = 8,
+        species_order: tuple = ("H", "C", "N", "O"),
+        networks: tuple = None,
+        ensemble: int = 1,
+        use_cuaev: bool = False,
+        no_species_converter: bool = False,
+    ) -> None:
         """
         Function build an ANI model all in one call. If no networks are passed in default ANI networks for
         hydrogen, carbon, nitrogen and oxygen are used. If you want to give your own networks then the species order
@@ -1411,51 +1673,56 @@ class ANI(TorchNetwork):
             spec_conv = torchani.nn.SpeciesConverter(species_order)
         else:
             spec_conv = None
-            log.warning("User reuqested no species converter, species are assumed to be given by the network number "
-                        "rather than atomic numbers")
+            log.warning(
+                "User reuqested no species converter, species are assumed to be given by the network number "
+                "rather than atomic numbers"
+            )
 
-        aev_computer = self.get_aev_computer(radial_cutoff,
-                                            theta_max_rad,
-                                            angular_cutoff,
-                                            etar,
-                                            etaa,
-                                            zeta,
-                                            radial_steps,
-                                            angular_radial_steps,
-                                            theta_steps,
-                                            species_order,
-                                            use_cuaev=use_cuaev)
-
+        aev_computer = self.get_aev_computer(
+            radial_cutoff,
+            theta_max_rad,
+            angular_cutoff,
+            etar,
+            etaa,
+            zeta,
+            radial_steps,
+            angular_radial_steps,
+            theta_steps,
+            species_order,
+            use_cuaev=use_cuaev,
+        )
 
         if networks is None:
             h_network, c_network, n_network, o_network = self.get_ani_network()
             networks = [h_network, c_network, n_network, o_network]
             self.default_ani = True
         else:
-            log.info("Using user defined list of networks. NOTE MUST BE THE SAME ORDER AS SPECIES ORDER.\n"
-                     "Species order: {}\nNetworks:\n{}\n".format(species_order, networks))
+            log.info(
+                "Using user defined list of networks. NOTE MUST BE THE SAME ORDER AS SPECIES ORDER.\n"
+                "Species order: {}\nNetworks:\n{}\n".format(species_order, networks)
+            )
             self.default_ani = False
             if isinstance(networks, OrderedDict):
-                networks = self.get_user_defined_networks(networks) 
+                networks = self.get_user_defined_networks(networks)
 
         self.networks = networks
 
         self.build(aev_computer, networks, species_converter=spec_conv, ensemble=None)
 
-
-    def get_aev_computer(self,
-                         radial_cutoff: float = 5.2000e+00,
-                         theta_max_rad: float = 3.33794218e+00,
-                         angular_cutoff: float = 3.5000e+00,
-                         etar: float = 1.6000000e+01,
-                         etaa: float = 8.000000,
-                         zeta: float = 3.2000000e+01,
-                         radial_steps: int = 16,
-                         angular_radial_steps: int = 4,
-                         theta_steps: int = 8,
-                         species_order: tuple = ("H", "C", "N", "O"),
-                         use_cuaev: bool = False
-                         ) -> torchani.AEVComputer:
+    def get_aev_computer(
+        self,
+        radial_cutoff: float = 5.2000e00,
+        theta_max_rad: float = 3.33794218e00,
+        angular_cutoff: float = 3.5000e00,
+        etar: float = 1.6000000e01,
+        etaa: float = 8.000000,
+        zeta: float = 3.2000000e01,
+        radial_steps: int = 16,
+        angular_radial_steps: int = 4,
+        theta_steps: int = 8,
+        species_order: tuple = ("H", "C", "N", "O"),
+        use_cuaev: bool = False,
+    ) -> torchani.AEVComputer:
         """
         Function to the return AEV computer that takes coordinates as input and outputs aevs
         :param radial_cutoff: float - cutoff radius for the radial symmetry function elements
@@ -1494,11 +1761,7 @@ class ANI(TorchNetwork):
         EtaR = torch.tensor(etar, device=device)
         ShfR = torch.tensor(
             np.linspace(
-                9.0000000e-01,
-                Rcr,
-                radial_steps,
-                endpoint=False,
-                dtype=np.float32
+                9.0000000e-01, Rcr, radial_steps, endpoint=False, dtype=np.float32
             ),
             device=device,
         )
@@ -1527,43 +1790,38 @@ class ANI(TorchNetwork):
             device=device,
         )
 
-        log.info('Rcr:{}'.format(Rcr))
-        log.info('Rca:{}'.format(Rca))
-        log.info('EtaR:{}'.format(EtaR))
-        log.info('ShfR:{}'.format(ShfR))
-        log.info('Zeta:{}'.format(Zeta))
-        log.info('ShfZ:{}'.format(ShfZ))
-        log.info('EtaA:{}'.format(EtaA))
-        log.info('ShfA:{}'.format(ShfA))
-        log.info('species_order:{}'.format(species_order))
+        log.info("Rcr:{}".format(Rcr))
+        log.info("Rca:{}".format(Rca))
+        log.info("EtaR:{}".format(EtaR))
+        log.info("ShfR:{}".format(ShfR))
+        log.info("Zeta:{}".format(Zeta))
+        log.info("ShfZ:{}".format(ShfZ))
+        log.info("EtaA:{}".format(EtaA))
+        log.info("ShfA:{}".format(ShfA))
+        log.info("species_order:{}".format(species_order))
 
         num_species = len(species_order)
 
         if use_cuaev is not True and self.use_cuaev is not True:
             log.info("Not using cuaev")
-            aev_computer = torchani.AEVComputer(Rcr,
-                                                Rca,
-                                                EtaR,
-                                                ShfR,
-                                                EtaA,
-                                                Zeta,
-                                                ShfA,
-                                                ShfZ,
-                                                num_species)
+            aev_computer = torchani.AEVComputer(
+                Rcr, Rca, EtaR, ShfR, EtaA, Zeta, ShfA, ShfZ, num_species
+            )
         else:
             self.use_cuaev = True
             log.info("Using cuaev")
-            aev_computer = torchani.AEVComputer(Rcr,
-                                                Rca,
-                                                EtaR,
-                                                ShfR,
-                                                EtaA,
-                                                Zeta,
-                                                ShfA,
-                                                ShfZ,
-                                                num_species,
-                                                use_cuda_extension=True)
-
+            aev_computer = torchani.AEVComputer(
+                Rcr,
+                Rca,
+                EtaR,
+                ShfR,
+                EtaA,
+                Zeta,
+                ShfA,
+                ShfZ,
+                num_species,
+                use_cuda_extension=True,
+            )
 
         self.aev_computer = aev_computer
         self.num_species = num_species
@@ -1591,7 +1849,9 @@ class ANI(TorchNetwork):
             else:
                 nonlinearity = "leaky_relu"
 
-            log.debug(f"Initializing with randomized a and nonlinearity. a: {a} nonlinearity {nonlinearity}")
+            log.debug(
+                f"Initializing with randomized a and nonlinearity. a: {a} nonlinearity {nonlinearity}"
+            )
             torch.nn.init.kaiming_normal_(nn.weight, a=a, nonlinearity=nonlinearity)
             torch.nn.init.zeros_(nn.bias)
 
@@ -1607,19 +1867,21 @@ class ANI(TorchNetwork):
         if definition[2].isalpha():
             if definition[2].lower() == "celu":
                 ac = torch.nn.CELU(*definition[3:])
-        
+
         return fc, ac
 
-    def get_user_defined_networks(self, networks: OrderedDict, use_ani_networks_for_ani_atoms: bool=False) -> tuple:
+    def get_user_defined_networks(
+        self, networks: OrderedDict, use_ani_networks_for_ani_atoms: bool = False
+    ) -> tuple:
         """
         Automatically build from a user description a neural network for a given element
-        :param networks: ordered dict - dictionary of element keys and lists of list, each sub list defines 
-                                input number of neurons, output number of neurons activation fx 
+        :param networks: ordered dict - dictionary of element keys and lists of list, each sub list defines
+                                input number of neurons, output number of neurons activation fx
                                 and activation fx parameters for example:
                                 {
                                     "H": [[100, 50, celu, 0.1], [50, 25, celu, 0.1], [25, 1, celu, 0.1]]
                                 }
-        :param use_ani_networks_for_ani_atoms: bool - use ani networks for H, C, N and O or not if they are used 
+        :param use_ani_networks_for_ani_atoms: bool - use ani networks for H, C, N and O or not if they are used
                                                       it is assumed they are the first elements
         :return tuple of torch.nn.Sequential
         """
@@ -1635,7 +1897,7 @@ class ANI(TorchNetwork):
             model_pots.append(c_network)
             model_pots.append(n_network)
             model_pots.append(o_network)
-        
+
         for k, v in networks.items():
             log.info("Building network for {}".format(k))
             network = []
@@ -1646,11 +1908,17 @@ class ANI(TorchNetwork):
             ml_pot = torch.nn.Sequential(*network)
             log.info("Network {}:\n{}".format(k, network))
             model_pots.append(ml_pot)
-        
+
         return model_pots
 
-    def get_ani_network(self) -> (torch.nn.Sequential, torch.nn.Sequential, torch.nn.Sequential,
-                torch.nn.Sequential):
+    def get_ani_network(
+        self,
+    ) -> (
+        torch.nn.Sequential,
+        torch.nn.Sequential,
+        torch.nn.Sequential,
+        torch.nn.Sequential,
+    ):
         """
         Function to get ANI network architectures
         :returns: (torch.nn.Sequential, torch.nn.Sequential, torch.nn.Sequential,
@@ -1659,7 +1927,7 @@ class ANI(TorchNetwork):
 
         log = logging.getLogger(__name__)
 
-        log.info('Creating ANI Network for net version: 1')
+        log.info("Creating ANI Network for net version: 1")
         h_network = torch.nn.Sequential(
             torch.nn.Linear(self.aev_dim, 160),
             torch.nn.CELU(0.1),
@@ -1667,7 +1935,7 @@ class ANI(TorchNetwork):
             torch.nn.CELU(0.1),
             torch.nn.Linear(128, 96),
             torch.nn.CELU(0.1),
-            torch.nn.Linear(96, 1)
+            torch.nn.Linear(96, 1),
         )
 
         c_network = torch.nn.Sequential(
@@ -1677,7 +1945,7 @@ class ANI(TorchNetwork):
             torch.nn.CELU(0.1),
             torch.nn.Linear(112, 96),
             torch.nn.CELU(0.1),
-            torch.nn.Linear(96, 1)
+            torch.nn.Linear(96, 1),
         )
 
         n_network = torch.nn.Sequential(
@@ -1687,7 +1955,7 @@ class ANI(TorchNetwork):
             torch.nn.CELU(0.1),
             torch.nn.Linear(112, 96),
             torch.nn.CELU(0.1),
-            torch.nn.Linear(96, 1)
+            torch.nn.Linear(96, 1),
         )
 
         o_network = torch.nn.Sequential(
@@ -1697,7 +1965,7 @@ class ANI(TorchNetwork):
             torch.nn.CELU(0.1),
             torch.nn.Linear(112, 96),
             torch.nn.CELU(0.1),
-            torch.nn.Linear(96, 1)
+            torch.nn.Linear(96, 1),
         )
 
         self.h_network = h_network
@@ -1707,12 +1975,13 @@ class ANI(TorchNetwork):
 
         return h_network, c_network, n_network, o_network
 
-    def build(self,
-              aev_computer: torchani.AEVComputer,
-              networks: list,
-              species_converter: Union[torchani.nn.SpeciesConverter, None] = None,
-              ensemble: Union[int, None] = None
-              ):
+    def build(
+        self,
+        aev_computer: torchani.AEVComputer,
+        networks: list,
+        species_converter: Union[torchani.nn.SpeciesConverter, None] = None,
+        ensemble: Union[int, None] = None,
+    ):
         """
         Function to build ANI network model
         :param aev_computer: torchani.AEVComputer - length of the atomic env vector
@@ -1741,17 +2010,21 @@ class ANI(TorchNetwork):
         if species_converter is None:
             self.model = torchani.nn.Sequential(aev_computer, nn).to(device)
         else:
-            self.model = torchani.nn.Sequential(species_converter, aev_computer, nn).to(device)
+            self.model = torchani.nn.Sequential(species_converter, aev_computer, nn).to(
+                device
+            )
 
         for il, layer in enumerate(self.model):
             if re.search(r"^Ensemble", str(layer)):
                 log.debug("Network layer found number {}".format(il))
                 self._network_layer_indx = il
 
-    def complete_model(self,
-                       model: Union[torchani.nn.Sequential, None] = None,
-                       energy_shifter: Union[torchani.utils.EnergyShifter, None] = None,
-                       filename: str = "complete_ani_model.pt" ):
+    def complete_model(
+        self,
+        model: Union[torchani.nn.Sequential, None] = None,
+        energy_shifter: Union[torchani.utils.EnergyShifter, None] = None,
+        filename: str = "complete_ani_model.pt",
+    ):
         """
         Function to add energy shifter to trianed model. The energy shifter adds the atomic self energies to the
         model predictions of the interaction energies.
@@ -1768,13 +2041,17 @@ class ANI(TorchNetwork):
         if energy_shifter is None:
             energy_shifter = self.energy_shifter
 
-        #TODO: we should think about adding species convert to the complete network for easier use of the calculator
+        # TODO: we should think about adding species convert to the complete network for easier use of the calculator
         # https://aiqm.github.io/torchani/api.html#torchani.SpeciesConverter
 
         if self.isparallel is False:
-            self.model = torchani.nn.Sequential(*[m for m in model], energy_shifter).to(device)
+            self.model = torchani.nn.Sequential(*[m for m in model], energy_shifter).to(
+                device
+            )
         else:
-            self.model = torchani.nn.Sequential(*[m for m in model.module], energy_shifter).to(device)
+            self.model = torchani.nn.Sequential(
+                *[m for m in model.module], energy_shifter
+            ).to(device)
             self.run_in_data_parallel()
 
         self.completed_model = True
@@ -1786,7 +2063,9 @@ class ANI(TorchNetwork):
             filename,
         )
 
-    def load_pretrained_on_to_model(self, pretrained: str, model_key: Union[None, str] = None):
+    def load_pretrained_on_to_model(
+        self, pretrained: str, model_key: Union[None, str] = None
+    ):
         """
         Function to load a pretrained model on to the equivalent initialized architecture
         :param pretrained: str - file and path to load weights from
@@ -1799,7 +2078,9 @@ class ANI(TorchNetwork):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         if self.model is None:
-            log.error("ERROR - must initialize model first with equivalent architecture")
+            log.error(
+                "ERROR - must initialize model first with equivalent architecture"
+            )
 
         if self.isbayesian is True:
             log.info("Current model is Bayesian")
@@ -1811,8 +2092,10 @@ class ANI(TorchNetwork):
         else:
             log.info("Current model is a single model")
 
-        log.info(f"Loading pre-trained weights from {self.pretrained} on to current model on "
-                 f"layer{self._network_layer_indx}")
+        log.info(
+            f"Loading pre-trained weights from {self.pretrained} on to current model on "
+            f"layer{self._network_layer_indx}"
+        )
 
         # Load weights and bias on the default network. ANI network is the first element in the object zero based.
         self.model = self.model.to(device)
@@ -1822,48 +2105,65 @@ class ANI(TorchNetwork):
         if model_key is None:
 
             try:
-                self.model[self._network_layer_indx].load_state_dict(torch.load(pretrained,
-                                                                                map_location=torch.device(device)
-                                                                                )
-                                                                     )
+                self.model[self._network_layer_indx].load_state_dict(
+                    torch.load(
+                        pretrained,
+                        map_location=torch.device(device),
+                        weights_only=False,
+                    )
+                )
                 self.model[self._network_layer_indx].eval()
 
             except RuntimeError as rerr:
                 # HACK: this allows us to load our old models with 1 BNN outside the ensemble wrapper
                 try:
-                    self.model[self._network_layer_indx][0].load_state_dict(torch.load(pretrained,
-                                                                                    map_location=torch.device(device)
-                                                                                    )
-                                                                         )
-                    self.model[self._network_layer_indx].eval()
-
-                except RuntimeError as rerr2:
-                    log.error(f"ERROR - loading pretrained model fails. Likely the ensemble is of different sizes please "
-                              f"check.\nORIGINAL ERROR:\n{rerr}\n-----\n")
-                    raise rerr2
-
-        # if pretrained contains other things as well .....
-        else:
-            checkpoint = torch.load(pretrained, map_location=torch.device(device))
-
-            try:
-                self.model[self._network_layer_indx].load_state_dict(checkpoint[model_key])
-                self.model[self._network_layer_indx].eval()
-
-            except RuntimeError as rerr:
-                # HACK: this allows us to load our old models with 1 BNN outside the ensemble wrapper
-                try:
-                    self.model[self._network_layer_indx][0].load_state_dict(checkpoint[model_key])
+                    self.model[self._network_layer_indx][0].load_state_dict(
+                        torch.load(
+                            pretrained,
+                            map_location=torch.device(device),
+                            weights_only=False,
+                        )
+                    )
                     self.model[self._network_layer_indx].eval()
 
                 except RuntimeError as rerr2:
                     log.error(
                         f"ERROR - loading pretrained model fails. Likely the ensemble is of different sizes please "
-                        f"check.\nORIGINAL ERROR:\n{rerr}\n-----\n")
+                        f"check.\nORIGINAL ERROR:\n{rerr}\n-----\n"
+                    )
+                    raise rerr2
+
+        # if pretrained contains other things as well .....
+        else:
+            checkpoint = torch.load(
+                pretrained, map_location=torch.device(device), weights_only=False
+            )
+
+            try:
+                self.model[self._network_layer_indx].load_state_dict(
+                    checkpoint[model_key]
+                )
+                self.model[self._network_layer_indx].eval()
+
+            except RuntimeError as rerr:
+                # HACK: this allows us to load our old models with 1 BNN outside the ensemble wrapper
+                try:
+                    self.model[self._network_layer_indx][0].load_state_dict(
+                        checkpoint[model_key]
+                    )
+                    self.model[self._network_layer_indx].eval()
+
+                except RuntimeError as rerr2:
+                    log.error(
+                        f"ERROR - loading pretrained model fails. Likely the ensemble is of different sizes please "
+                        f"check.\nORIGINAL ERROR:\n{rerr}\n-----\n"
+                    )
                     raise rerr2
             except KeyError as kerr:
-                log.error(f"\nKEY ERROR - please provide a valid key on --pretrained_model_key option for the "
-                          f"pretrained model file {pretrained}")
+                log.error(
+                    f"\nKEY ERROR - please provide a valid key on --pretrained_model_key option for the "
+                    f"pretrained model file {pretrained}"
+                )
                 raise kerr
 
     def set_schedulers(self, SGD, AdamW, sgd=None, adamw=None):
@@ -1890,11 +2190,14 @@ class ANI(TorchNetwork):
         else:
             self.adamw_ani_scheduler = adamw
 
-    def transfer_dnn_to_bnn(self, bnn_prior: dict,
-                            params_prior: dict,
-                            bayesian_depth: int = None,
-                            set_rho_explicitly: bool = True,
-                            set_prior_explicitly: bool = True):
+    def transfer_dnn_to_bnn(
+        self,
+        bnn_prior: dict,
+        params_prior: dict,
+        bayesian_depth: int = None,
+        set_rho_explicitly: bool = True,
+        set_prior_explicitly: bool = True,
+    ):
         """
         Function to convert ani to BNN to a set depth on the network
         :param bnn_prior: dict - output of chosen prior from bnn_priors
@@ -1915,20 +2218,23 @@ class ANI(TorchNetwork):
         if self.isbayesian is False:
             log.info("Converting model DNN to BNN")
 
-            #TODO: For some reason this tries to loop twice for BNNs we should have a better way to handle this.
+            # TODO: For some reason this tries to loop twice for BNNs we should have a better way to handle this.
             try:
-                convert_dnn_to_bnn(model=self.model,
-                                   bnn_prior=bnn_prior,
-                                   params_prior=params_prior,
-                                   bayesian_depth=bayesian_depth,
-                                   set_rho_explicitly=set_rho_explicitly,
-                                   set_prior_explicitly=set_prior_explicitly,
-                                   prior_key=""
-                                   )
+                convert_dnn_to_bnn(
+                    model=self.model,
+                    bnn_prior=bnn_prior,
+                    params_prior=params_prior,
+                    bayesian_depth=bayesian_depth,
+                    set_rho_explicitly=set_rho_explicitly,
+                    set_prior_explicitly=set_prior_explicitly,
+                    prior_key="",
+                )
                 log.info("Model DNN converted to BNN")
                 self.bayesian = True
             except AttributeError as aerr:
-                log.warning(f"\n-----\nWARNING - Failed DNN to BNN conversion\n{aerr}\n-----\n")
+                log.warning(
+                    f"\n-----\nWARNING - Failed DNN to BNN conversion\n{aerr}\n-----\n"
+                )
                 raise aerr
 
         else:

@@ -1,0 +1,10 @@
+*.pkl
+*.ipynb_checkpoints/*
+*.csv
+*.png
+*.json
+*.egg-info
+*build/*
+*dist/*
+*__pycache__/*
+*.pyc

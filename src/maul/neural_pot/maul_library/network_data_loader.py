@@ -24,21 +24,24 @@ def data_merge(*iterators):
                 yield value
 
 
-
-def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
-                  species_order: list,
-                  data: str,
-                  batch_size: int,
-                  train_size: float,
-                  val_size: float,
-                  forces: bool = False,
-                  no_reload: bool = False,
-                  species_indicies: Union[str, list, tuple] = "periodic_table",
-                  data_pkl_path: str = "ani_datasets.pkl",
-                  mutate_datasets: Union[None, int] = None,
-                  random_seed: int = 15234) -> (torchani.data.TransformableIterable,
-                                                               torchani.data.TransformableIterable,
-                                                               torchani.data.TransformableIterable):
+def load_ani_data(
+    energy_shifter: torchani.utils.EnergyShifter,
+    species_order: list,
+    data: str,
+    batch_size: int,
+    train_size: float,
+    val_size: float,
+    forces: bool = False,
+    no_reload: bool = False,
+    species_indicies: Union[str, list, tuple] = "periodic_table",
+    data_pkl_path: str = "ani_datasets.pkl",
+    mutate_datasets: Union[None, int] = None,
+    random_seed: int = 15234,
+) -> (
+    torchani.data.TransformableIterable,
+    torchani.data.TransformableIterable,
+    torchani.data.TransformableIterable,
+):
 
     """
     Function to load and merger ANI dataset
@@ -72,19 +75,20 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
     val_iterators = []
     test_iterators = []
 
-
-
     if no_reload is False:
         log.info("If {} is present will reload the file".format(data_pkl_path))
     else:
-        log.info("Will load data fresh and not use any previous stored data no_reload option given")
+        log.info(
+            "Will load data fresh and not use any previous stored data no_reload option given"
+        )
 
     log.info("Batch size: {}".format(batch_size))
 
     if os.path.isfile(data_pkl_path) and no_reload is False:
         log.info(
-                "Loading dataset to maintain consistent train, test, validation "
-                "splitting")
+            "Loading dataset to maintain consistent train, test, validation "
+            "splitting"
+        )
 
         with open(data_pkl_path, "rb") as fin:
             dataset = pickle.load(fin)
@@ -105,38 +109,50 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
                 val_data = dataset["validation"].collate(batch_size).cache()
             except KeyError as kerr:
                 log.error(
-                        "ERROR - loading validation data from {}".format(data_pkl_path))
+                    "ERROR - loading validation data from {}".format(data_pkl_path)
+                )
                 raise (kerr)
 
             try:
                 energy_shifter.self_energies = dataset["self_energies"]
             except KeyError as kerr:
                 log.error(
-                        "ERROR - loading self energy data from {}".format(
-                            data_pkl_path))
+                    "ERROR - loading self energy data from {}".format(data_pkl_path)
+                )
                 raise (kerr)
 
             if mutate_datasets is not None:
-                train_data, val_data = mutate(train_data,
-                                              val_data,
-                                              ensemble_index=mutate_datasets,
-                                              rseed=random_seed)
+                train_data, val_data = mutate(
+                    train_data,
+                    val_data,
+                    ensemble_index=mutate_datasets,
+                    rseed=random_seed,
+                )
     else:
         # load data sets
         store_se = False
         if energy_shifter.self_energies is not None:
             log.info("The energy shifter provided is already initialized")
-            log.info("\n-----\nWill use the values of this initialized energy shifter rather than "
-                     "setting new ones for this data set.\nIf you want new one to be set "
-                     "pass in `torchani.EnergyShifter(None)`.\nWe assume that the "
-                     "energies are in the same order as species order, please check the output dictionary\n"
-                     "------\n")
+            log.info(
+                "\n-----\nWill use the values of this initialized energy shifter rather than "
+                "setting new ones for this data set.\nIf you want new one to be set "
+                "pass in `torchani.EnergyShifter(None)`.\nWe assume that the "
+                "energies are in the same order as species order, please check the output dictionary\n"
+                "------\n"
+            )
 
             # NOTE: to keep using the self energies as we defined them we have to pass in a dictionary to
             # subtract self energies with the key of the neural network index. This means we use se for the data
             # preparation if the self energies are given.
-            se = {k: energy_shifter.self_energies[ith] for ith, k in enumerate(species_order)}
-            log.info("\n----- PLEASE CHECK ------\nPlease check this dictionary is correct:\n{}\n------".format(se))
+            se = {
+                k: energy_shifter.self_energies[ith]
+                for ith, k in enumerate(species_order)
+            }
+            log.info(
+                "\n----- PLEASE CHECK ------\nPlease check this dictionary is correct:\n{}\n------".format(
+                    se
+                )
+            )
         else:
             log.info("No energy shifter given setting up a new energy shifter instance")
             # NOTE: if self energies are got given as input then they are found through linear regression we then need
@@ -153,36 +169,40 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
 
                 if forces is False:
                     log.info("Will not use forces data (--forces not used)")
-                    training, validation, test = torchani.data.load(
-                            finh5).subtract_self_energies(se,
-                                                          species_order).species_to_indices(
-                            species_indicies).shuffle().split(train_size,
-                                                           val_size, None)
+                    training, validation, test = (
+                        torchani.data.load(finh5)
+                        .subtract_self_energies(se, species_order)
+                        .species_to_indices(species_indicies)
+                        .shuffle()
+                        .split(train_size, val_size, None)
+                    )
                 else:
                     log.info("Will use forces data (--forces used)")
-                    training, validation, test = torchani.data.load(finh5,
-                                                                    additional_properties=(
-                                                                        "forces",
-                                                                    )).subtract_self_energies(
-                            se, species_order).species_to_indices(
-                            species_indicies).shuffle().split(train_size,
-                                                           val_size, None)
+                    training, validation, test = (
+                        torchani.data.load(finh5, additional_properties=("forces",))
+                        .subtract_self_energies(se, species_order)
+                        .species_to_indices(species_indicies)
+                        .shuffle()
+                        .split(train_size, val_size, None)
+                    )
 
                 log.info("{} loaded".format(finh5))
                 train_iterators.append(training)
                 val_iterators.append(validation)
                 test_iterators.append(test)
 
-            if any(len(ent) == 0 for ent in
-                   [train_iterators, val_iterators, test_iterators]):
+            if any(
+                len(ent) == 0
+                for ent in [train_iterators, val_iterators, test_iterators]
+            ):
                 log.warning(
-                        "WARNING - there appear to be no *.h5 files given as input in "
-                        "{} "
-                        "please check inputs.".format(
-                                data))
+                    "WARNING - there appear to be no *.h5 files given as input in "
+                    "{} "
+                    "please check inputs.".format(data)
+                )
                 raise RuntimeError("No inputs")
 
-            # Lists are needed not iterators so that the data can be pickeled 
+            # Lists are needed not iterators so that the data can be pickeled
             # May be this leads to memory issues in which case we will need
             # to be careful here
             train_merger = list(data_merge(*train_iterators))
@@ -201,9 +221,12 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
             log.info("Test data merged")
 
             if mutate_datasets is not None:
-                train_iterable,  val_iterable = mutate(train_iterable, val_iterable, 
-                                                        ensemble_index=mutate_datasets,
-                                                        rseed=random_seed)
+                train_iterable, val_iterable = mutate(
+                    train_iterable,
+                    val_iterable,
+                    ensemble_index=mutate_datasets,
+                    rseed=random_seed,
+                )
 
             if store_se is True:
                 energy_shifter = se
@@ -211,10 +234,15 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
             # save to pkl
             with open(data_pkl_path, "wb") as fout:
                 log.info("Saving to pickle {} .....".format(data_pkl_path))
-                pickle.dump({"training": train_iterable,
-                             "test": test_iterable,
-                             "validation": val_iterable,
-                             "self_energies": energy_shifter.self_energies.cpu()}, fout)
+                pickle.dump(
+                    {
+                        "training": train_iterable,
+                        "test": test_iterable,
+                        "validation": val_iterable,
+                        "self_energies": energy_shifter.self_energies.cpu(),
+                    },
+                    fout,
+                )
 
                 log.info("Pickle saved")
 
@@ -243,20 +271,22 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
 
             if forces is False:
                 log.info("Will not use forces data (--forces not used)")
-                train, val, test = torchani.data.load(
-                    files[0]).subtract_self_energies(se,
-                                                  species_order).species_to_indices(
-                    species_indicies).shuffle().split(train_size,
-                                                      val_size, None)
+                train, val, test = (
+                    torchani.data.load(files[0])
+                    .subtract_self_energies(se, species_order)
+                    .species_to_indices(species_indicies)
+                    .shuffle()
+                    .split(train_size, val_size, None)
+                )
             else:
                 log.info("Will use forces data (--forces used)")
-                train, val, test = torchani.data.load(files[0],
-                                                                additional_properties=(
-                                                                    "forces",
-                                                                )).subtract_self_energies(
-                    se, species_order).species_to_indices(
-                    species_indicies).shuffle().split(train_size,
-                                                      val_size, None)
+                train, val, test = (
+                    torchani.data.load(files[0], additional_properties=("forces",))
+                    .subtract_self_energies(se, species_order)
+                    .species_to_indices(species_indicies)
+                    .shuffle()
+                    .split(train_size, val_size, None)
+                )
             log.info("Training set size: {}".format(len(train)))
             log.info("validation set size: {}".format(len(val)))
             log.info("Test set size: {}".format(len(test)))
@@ -270,9 +300,12 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
             log.info("Test data loaded into transformable iterable")
 
             if mutate_datasets is not None:
-                train_iterable, val_iterable = mutate(train_iterable, val_iterable, 
-                                                      ensemble_index=mutate_datasets,
-                                                      rseed=random_seed)
+                train_iterable, val_iterable = mutate(
+                    train_iterable,
+                    val_iterable,
+                    ensemble_index=mutate_datasets,
+                    rseed=random_seed,
+                )
 
             if store_se is True:
                 energy_shifter = se
@@ -280,10 +313,15 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
             # save to pkl
             with open(data_pkl_path, "wb") as fout:
                 log.info("Saving to pickle {} .....".format(data_pkl_path))
-                pickle.dump({"training": train_iterable,
-                             "test": test_iterable,
-                             "validation": val_iterable,
-                             "self_energies": energy_shifter.self_energies.cpu()}, fout)
+                pickle.dump(
+                    {
+                        "training": train_iterable,
+                        "test": test_iterable,
+                        "validation": val_iterable,
+                        "self_energies": energy_shifter.self_energies.cpu(),
+                    },
+                    fout,
+                )
 
                 log.info("Pickle saved")
 
@@ -297,12 +335,15 @@ def load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
 
     return train_data, val_data, test_data
 
-def mutate(train_data: torchani.data.TransformableIterable,
-           val_data:torchani.data.TransformableIterable,
-           ensemble_index:int = 0,
-           rseed:int = 15234,
-           min_fraction:float = 0.0, 
-           max_fraction:float = 0.1) -> (torchani.data.TransformableIterable, torchani.data.TransformableIterable):
+
+def mutate(
+    train_data: torchani.data.TransformableIterable,
+    val_data: torchani.data.TransformableIterable,
+    ensemble_index: int = 0,
+    rseed: int = 15234,
+    min_fraction: float = 0.0,
+    max_fraction: float = 0.1,
+) -> (torchani.data.TransformableIterable, torchani.data.TransformableIterable):
     """
     Function to split and mix train and validation data using ensemble_index as a pseudo random seed
     :param train: torchani.data.TransformableIterable - training data as a torchani.data.TransformableIterable
@@ -311,7 +352,7 @@ def mutate(train_data: torchani.data.TransformableIterable,
     :param rseed: int - numpy original random seed to reinitialize
     :param min_fraction: float - minimum fraction of entries to swap
     :param max_fraction: float - maximum fraction of entries to swap
-    :return: (torchani.data.TransformableIterable, torchani.data.TransformableIterable) - training and validation data 
+    :return: (torchani.data.TransformableIterable, torchani.data.TransformableIterable) - training and validation data
     """
 
     log = logging.getLogger(__name__)
@@ -320,42 +361,58 @@ def mutate(train_data: torchani.data.TransformableIterable,
     fraction_to_change = np.random.uniform(low=min_fraction, high=max_fraction)
     log.info(f"Changing {fraction_to_change} fraction of train and validation data")
 
-    train_min_index = int(np.floor(len(train_data.wrapped_iterable) * fraction_to_change))
+    train_min_index = int(
+        np.floor(len(train_data.wrapped_iterable) * fraction_to_change)
+    )
     if train_min_index != 0:
         train_max_index = train_min_index + train_min_index
     else:
         train_max_index = 1
-    log.info(f"training index min {train_min_index} and max {train_max_index} index for swapping.")
+    log.info(
+        f"training index min {train_min_index} and max {train_max_index} index for swapping."
+    )
     removed_training = train_data.wrapped_iterable[train_min_index:train_max_index]
     train_data = torchani.data.TransformableIterable(
-        train_data.wrapped_iterable[:train_min_index] + train_data.wrapped_iterable[train_max_index:])
+        train_data.wrapped_iterable[:train_min_index]
+        + train_data.wrapped_iterable[train_max_index:]
+    )
 
     val_min_index = int(np.floor(len(val_data.wrapped_iterable) * fraction_to_change))
     if val_min_index != 0:
         val_max_index = val_min_index + val_min_index
     else:
         val_max_index = 1
-    log.info(f"validation index min {val_min_index} and max {val_max_index} index for swapping.")
+    log.info(
+        f"validation index min {val_min_index} and max {val_max_index} index for swapping."
+    )
     removed_val = val_data.wrapped_iterable[val_min_index:val_max_index]
     val_data = torchani.data.TransformableIterable(
-        val_data.wrapped_iterable[:val_min_index] + val_data.wrapped_iterable[val_max_index:])
+        val_data.wrapped_iterable[:val_min_index]
+        + val_data.wrapped_iterable[val_max_index:]
+    )
 
-    train_data = torchani.data.TransformableIterable(train_data.wrapped_iterable + removed_val)
-    val_data = torchani.data.TransformableIterable(val_data.wrapped_iterable + removed_training)
+    train_data = torchani.data.TransformableIterable(
+        train_data.wrapped_iterable + removed_val
+    )
+    val_data = torchani.data.TransformableIterable(
+        val_data.wrapped_iterable + removed_training
+    )
 
     np.random.seed(rseed)
-    
+
     return train_data, val_data
 
 
-def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
-                  species_order: list,
-                  data: str,
-                  batch_size: int,
-                  train_size: float,
-                  val_size: float,
-                  forces: bool = False,
-                  no_reload: bool = False):
+def _original_load_ani_data(
+    energy_shifter: torchani.utils.EnergyShifter,
+    species_order: list,
+    data: str,
+    batch_size: int,
+    train_size: float,
+    val_size: float,
+    forces: bool = False,
+    no_reload: bool = False,
+):
 
     """
     Function to load and merger ANI dataset
@@ -382,14 +439,17 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
     if no_reload is False:
         log.info("If {} is present will reload the file".format(data_pkl_path))
     else:
-        log.info("Will load data fresh and not use any previous stored data no_reload option given")
+        log.info(
+            "Will load data fresh and not use any previous stored data no_reload option given"
+        )
 
     log.info("Batch size: {}".format(batch_size))
 
     if os.path.isfile(data_pkl_path) and no_reload is False:
         log.info(
-                "Loading dataset to maintain consistent train, test, validation "
-                "splitting")
+            "Loading dataset to maintain consistent train, test, validation "
+            "splitting"
+        )
 
         with open(data_pkl_path, "rb") as fin:
             dataset = pickle.load(fin)
@@ -410,15 +470,16 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
                 val_data = dataset["validation"].collate(batch_size).cache()
             except KeyError as kerr:
                 log.error(
-                        "ERROR - loading validation data from {}".format(data_pkl_path))
+                    "ERROR - loading validation data from {}".format(data_pkl_path)
+                )
                 raise (kerr)
 
             try:
                 energy_shifter.self_energies = dataset["self_energies"]
             except KeyError as kerr:
                 log.error(
-                        "ERROR - loading self energy data from {}".format(
-                            data_pkl_path))
+                    "ERROR - loading self energy data from {}".format(data_pkl_path)
+                )
                 raise (kerr)
 
     else:
@@ -426,13 +487,22 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
         store_se = False
         if energy_shifter.self_energies is not None:
             log.info("The energy shifter provided is already initialized")
-            log.info("\n-----\nWill use the values of this initialized energy shifter rather than"
-                     "setting new ones for this data set.\nIf you want new one to be set"
-                     "pass in `torchani.EnergyShifter(None)`.\nWe assume that the"
-                     "energies are in the same order as species order, please check the output dictionary\n"
-                     "------\n")
-            se = {k: energy_shifter.self_energies[ith] for ith, k in enumerate(species_order)}
-            log.info("\n----- PLEASE CHECK ------\nPlease check this dictionary is correct:\n{}\n------".format(se))
+            log.info(
+                "\n-----\nWill use the values of this initialized energy shifter rather than"
+                "setting new ones for this data set.\nIf you want new one to be set"
+                "pass in `torchani.EnergyShifter(None)`.\nWe assume that the"
+                "energies are in the same order as species order, please check the output dictionary\n"
+                "------\n"
+            )
+            se = {
+                k: energy_shifter.self_energies[ith]
+                for ith, k in enumerate(species_order)
+            }
+            log.info(
+                "\n----- PLEASE CHECK ------\nPlease check this dictionary is correct:\n{}\n------".format(
+                    se
+                )
+            )
         else:
             se = energy_shifter
             store_se = True
@@ -444,33 +514,37 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
 
                 if forces is False:
                     log.info("Will not use forces data (--forces not used)")
-                    training, validation, test = torchani.data.load(
-                            finh5).subtract_self_energies(se,
-                                                          species_order).species_to_indices(
-                            species_order).shuffle().split(train_size,
-                                                           val_size, None)
+                    training, validation, test = (
+                        torchani.data.load(finh5)
+                        .subtract_self_energies(se, species_order)
+                        .species_to_indices(species_order)
+                        .shuffle()
+                        .split(train_size, val_size, None)
+                    )
                 else:
                     log.info("Will use forces data (--forces used)")
-                    training, validation, test = torchani.data.load(finh5,
-                                                                    additional_properties=(
-                                                                        "forces",
-                                                                    )).subtract_self_energies(
-                            se, species_order).species_to_indices(
-                            species_order).shuffle().split(train_size,
-                                                           val_size, None)
+                    training, validation, test = (
+                        torchani.data.load(finh5, additional_properties=("forces",))
+                        .subtract_self_energies(se, species_order)
+                        .species_to_indices(species_order)
+                        .shuffle()
+                        .split(train_size, val_size, None)
+                    )
 
                 log.info("{} loaded".format(finh5))
                 train_iterators.append(training)
                 val_iterators.append(validation)
                 test_iterators.append(test)
 
-            if any(len(ent) == 0 for ent in
-                   [train_iterators, val_iterators, test_iterators]):
+            if any(
+                len(ent) == 0
+                for ent in [train_iterators, val_iterators, test_iterators]
+            ):
                 log.warning(
-                        "WARNING - there appear to be no *.h5 files given as input in "
-                        "{} "
-                        "please check inputs.".format(
-                                data))
+                    "WARNING - there appear to be no *.h5 files given as input in "
+                    "{} "
+                    "please check inputs.".format(data)
+                )
                 raise RuntimeError("No inputs")
 
             # Lists are needed not iterators so that the data can be pickeled
@@ -488,16 +562,21 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
             test_iterable = torchani.data.TransformableIterable(test_merger)
             log.info("Test data merged")
 
-            #if store_se is True:
+            # if store_se is True:
             #    energy_shifter = se
 
             # save to pkl
             with open(data_pkl_path, "wb") as fout:
                 log.info("Saving to pickle .....")
-                pickle.dump({"training": train_iterable,
-                             "test": test_iterable,
-                             "validation": val_iterable,
-                             "self_energies": se.self_energies.cpu()}, fout)
+                pickle.dump(
+                    {
+                        "training": train_iterable,
+                        "test": test_iterable,
+                        "validation": val_iterable,
+                        "self_energies": se.self_energies.cpu(),
+                    },
+                    fout,
+                )
 
                 log.info("Pickle saved")
 
@@ -522,9 +601,13 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
                 log.error("No data (*.h5) files in {}".format(data))
                 raise RuntimeError("No data *.h5 files present to load")
             log.info("Loading directly as only one data h5 file")
-            train, val, test = torchani.data.load(files[0]).subtract_self_energies(
-                    energy_shifter, species_order).species_to_indices(
-                    species_order).shuffle().split(train_size, None)
+            train, val, test = (
+                torchani.data.load(files[0])
+                .subtract_self_energies(energy_shifter, species_order)
+                .species_to_indices(species_order)
+                .shuffle()
+                .split(train_size, None)
+            )
 
             train_iterable = torchani.data.TransformableIterable(train)
             val_iterable = torchani.data.TransformableIterable(val)
@@ -534,10 +617,15 @@ def _original_load_ani_data(energy_shifter: torchani.utils.EnergyShifter,
             log.info("Data loaded saving to pickle file")
             with open(data_pkl_path, "wb") as fout:
                 log.info("Saving to pickle .....")
-                pickle.dump({"training": train_iterable,
-                             "test": test_iterable,
-                             "validation": val_iterable,
-                             "self_energies": se.self_energies.cpu()}, fout)
+                pickle.dump(
+                    {
+                        "training": train_iterable,
+                        "test": test_iterable,
+                        "validation": val_iterable,
+                        "self_energies": se.self_energies.cpu(),
+                    },
+                    fout,
+                )
 
                 log.info("Pickle saved")
 
