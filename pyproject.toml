@@ -1,0 +1,50 @@
+# Copyright (c) 2025 International Business Machines
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>=63.2.0",
+    "wheel>=0.37.1",
+]
+
+[project]
+name = "maul"
+version = "0.0.1"
+authors = [
+    {name = "James McDonagh", email = "james.mcdoangh@uk.ibm.com"},
+    {name = "Clyde Fare", email = "clyde.fare@ibm.com"},
+    {name = "Ravikanth Tadikonda", email = "ravikanth.tadikonda@stfc.ac.uk"},
+    {name = "Zeynap Sumer", email = "zsumer@ibm.com"},
+]
+description = "A package to build and use Modified ANI with Uncertainity Limits (MAUL) neural potentials. "
+requires-python = ">=3.9,<4.0"
+classifiers = [
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "License :: OSI Approved :: MIT License"
+]
+
+# The versions set are the ones used for the original install on Mac OS so should work if pinned to only those versions i.e. >= --> ==
+# "scaffoldgraph>=1.1.2" # Probably not needed
+dependencies = [
+    "numpy>=2.2.3",
+    "pytest>=7.4.4",
+    "pandas>=2.0.0",
+    "pre-commit>=3.5.0",
+    "pdocs>=1.2.0",
+    "ase>=3.24.0",
+    "bayesian-torch>=0.5.0",
+    "h5py>=3.13.0",
+    "tensorboard>=2.19.0",
+    "torchani>=2.2.4",
+    "uncertainty-toolbox>=0.1.1",
+    "tqdm>=4.67.1",
+    "matplotlib>=3.10.0",
+    "seaborn>=0.13.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mypkg = ["*.pt", ".json"]

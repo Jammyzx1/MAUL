@@ -10,11 +10,19 @@ import json
 import numpy as np
 import pandas as pd
 import random
-from bnnani.network_classes import TorchNetwork, ANI, bnn_priors, convert_dnn_to_bnn, is_bayesian_network, update_bnn_variance
-from bnnani import network_data_loader
-from bnnani import network_train
-from bnnani import network_test
-from bnnani import network_utilities
+from maul.neural_pot.maul_library.network_classes import (
+    TorchNetwork,
+    ANI,
+    bnn_priors,
+    convert_dnn_to_bnn,
+    is_bayesian_network,
+    update_bnn_variance,
+)
+from maul.neural_pot.maul_library import network_data_loader
+from maul.neural_pot.maul_library import network_train
+from maul.neural_pot.maul_library import network_test
+from maul.neural_pot.maul_library import network_utilities
+from maul.neural_pot.maul_library.network_utilities import kcalmol2hartree
 from datetime import datetime
 from torchani.units import hartree2kcalmol
 
@@ -28,6 +36,7 @@ __description__ = """
                 """
 __title__ = os.path.basename(__file__)
 
+
 def setup_logger(cwd: str = os.getcwd(), loglev: str = "INFO"):
     """
     Make logger setup with file and screen handler
@@ -40,9 +49,13 @@ def setup_logger(cwd: str = os.getcwd(), loglev: str = "INFO"):
     try:
         intloglev + 1
     except TypeError:
-        print("ERROR - cannot convert loglev to numeric value using default of 20 = INFO")
+        print(
+            "ERROR - cannot convert loglev to numeric value using default of 20 = INFO"
+        )
         with open("error_logging.log", "w+") as logerr:
-            logerr.write("ERROR - cannot convert loglev to numeric value using default of 20 = INFO")
+            logerr.write(
+                "ERROR - cannot convert loglev to numeric value using default of 20 = INFO"
+            )
         intloglev = 20
 
     # Format routine the message comes from, the leve of the information debug, info, warning, error, critical
@@ -55,21 +68,26 @@ def setup_logger(cwd: str = os.getcwd(), loglev: str = "INFO"):
     # File logging handle set up
     filelog = logging.FileHandler("{}".format(pathlog), mode="w")
     filelog.setLevel(intloglev)
-    fileformat = logging.Formatter("%(levelname)s - %(name)s - %(asctime)s - %(message)s", "%d-%m-%Y %H:%M:%S")
+    fileformat = logging.Formatter(
+        "%(levelname)s - %(name)s - %(asctime)s - %(message)s", "%d-%m-%Y %H:%M:%S"
+    )
     filelog.setFormatter(fileformat)
 
     # Setup handle for screen printing only prints info and above not debugging info
     screen = logging.StreamHandler()
     screen.setLevel(10)
-    screenformat = logging.Formatter('%(message)s')
+    screenformat = logging.Formatter("%(message)s")
     screen.setFormatter(screenformat)
 
     # get log instance
     log.addHandler(screen)
     log.addHandler(filelog)
 
-    log.info("The handlers {} logging level {} {}".format(log.handlers, loglev, intloglev))
-    log.info('Started {}\n'.format(datetime.now()))
+    log.info(
+        "The handlers {} logging level {} {}".format(log.handlers, loglev, intloglev)
+    )
+    log.info("Started {}\n".format(datetime.now()))
+
 
 def get_parse_opt():
     """
@@ -87,13 +105,13 @@ def get_parse_opt():
         )
 
         group = parser.add_argument_group("Featurization options")
- 
+
         group.add_argument(
             "--radial_cutoff",
             action="store",
             type=float,
             help="Radial cutoff distance",
-            default=5.2000e+00,
+            default=5.2000e00,
         )
 
         group.add_argument(
@@ -101,7 +119,7 @@ def get_parse_opt():
             action="store",
             type=float,
             help="Theta distance cutoff",
-            default=3.33794218e+00,
+            default=3.33794218e00,
         )
 
         group.add_argument(
@@ -109,7 +127,7 @@ def get_parse_opt():
             action="store",
             type=float,
             help="Angular cutoff in radians",
-            default=3.5000e+00,
+            default=3.5000e00,
         )
 
         group.add_argument(
@@ -117,7 +135,7 @@ def get_parse_opt():
             action="store",
             type=float,
             help="Eta in the radial function determines the guassians width",
-            default=1.6000000e+01,
+            default=1.6000000e01,
         )
 
         group.add_argument(
@@ -133,7 +151,7 @@ def get_parse_opt():
             action="store",
             type=float,
             help="Zeta in the angular function determines the guassians width for the angular portion",
-            default=3.2000000e+01,
+            default=3.2000000e01,
         )
 
         group.add_argument(
@@ -166,7 +184,7 @@ def get_parse_opt():
             nargs="*",
             type=str,
             help="Species order at atomic symbol",
-            default=["H", "C", "N", "O"]
+            default=["H", "C", "N", "O"],
         )
 
         group.add_argument(
@@ -175,7 +193,7 @@ def get_parse_opt():
             nargs="*",
             type=float,
             help="Self energies in the order of species order",
-            default=[-0.6010 ,-38.0832, -54.7078, -75.1945]
+            default=[-0.6010, -38.0832, -54.7078, -75.1945],
         )
 
         group = parser.add_argument_group("Data options")
@@ -185,7 +203,7 @@ def get_parse_opt():
             metavar="str",
             action="store",
             help="Data directory where HDF5 file of training and testing data can "
-                 "be found",
+            "be found",
             default="../../data/ANI-1_release",
         )
 
@@ -193,14 +211,14 @@ def get_parse_opt():
             "--no_reload",
             action="store_true",
             help="Tell the code to reload data don't use previous loading data",
-            default=False
+            default=False,
         )
 
         group.add_argument(
             "--checkpoint_filename",
             type=str,
             default="ani_model_checkpoint.pt",
-            help="initial weights path"
+            help="initial weights path",
         )
 
         group.add_argument(
@@ -215,7 +233,7 @@ def get_parse_opt():
             "--learning_curve_csv_filename",
             type=str,
             default="learning_curve.csv",
-            help="best weights path" 
+            help="best weights path",
         )
 
         group.add_argument(
@@ -286,7 +304,7 @@ def get_parse_opt():
             help="Whether to read species by atomic number (ani 1x data) or label mapped to network index (ani 1 data)",
             nargs="+",
             type=str,
-            default=["H", "C", "N", "O"], # ["periodic_table"],
+            default=["H", "C", "N", "O"],  # ["periodic_table"],
         )
 
         group.add_argument(
@@ -304,15 +322,11 @@ def get_parse_opt():
             action="store",
             help="'ani' or Json file with prior parameters stored under appropriate keys for setting each individually",
             type=str,
-            default=None
+            default=None,
         )
 
         group.add_argument(
-            "--prior_mu",
-            action="store",
-            help="Prior mean",
-            type=float,
-            default=0.0
+            "--prior_mu", action="store", help="Prior mean", type=float, default=0.0
         )
 
         group.add_argument(
@@ -320,7 +334,7 @@ def get_parse_opt():
             action="store",
             help="Prior standard deviation",
             type=float,
-            default=1.0
+            default=1.0,
         )
 
         group.add_argument(
@@ -328,7 +342,7 @@ def get_parse_opt():
             action="store",
             help="Posterior mean initialization",
             type=float,
-            default=0.0
+            default=0.0,
         )
 
         group.add_argument(
@@ -336,7 +350,7 @@ def get_parse_opt():
             action="store",
             help="Posterior denisty initialization",
             type=float,
-            default=-3.0
+            default=-3.0,
         )
 
         group.add_argument(
@@ -365,7 +379,7 @@ def get_parse_opt():
             action="store",
             help="MOPED delta value",
             type=float,
-            default=0.2
+            default=0.2,
         )
 
         group.add_argument(
@@ -380,7 +394,7 @@ def get_parse_opt():
             dest="moped_init_model",
             type=str,
             default="dnn_v1_moped_init.pt",
-            help="DNN model to intialize MOPED method filename and path /path/to/dnn_v1_moped_init.pt"
+            help="DNN model to intialize MOPED method filename and path /path/to/dnn_v1_moped_init.pt",
         )
 
         group.add_argument(
@@ -388,14 +402,14 @@ def get_parse_opt():
             action="store",
             help="Use bayesian layers to a depth of n (None means all)",
             type=int,
-            default=None
+            default=None,
         )
 
         group.add_argument(
             "--lml",
             action="store_true",
             help="Whether to replace the MSE loss with LML loss for the BNN",
-            default=False
+            default=False,
         )
 
         group = parser.add_argument_group("Training options")
@@ -411,26 +425,22 @@ def get_parse_opt():
             "--train_mc_runs",
             action="store",
             help="Number of Monte Carlo runs during training of the Bayesian "
-                 "potential",
+            "potential",
             type=int,
-            default=2
+            default=2,
         )
 
         group.add_argument(
             "--test_mc_runs",
             action="store",
             help="Number of Monte Carlo runs during testing of the Bayesian "
-                 "potential",
+            "potential",
             type=int,
-            default=2
+            default=2,
         )
 
         group.add_argument(
-            "--kl_weight",
-            action="store",
-            help="KL factor",
-            type=float,
-            default=0.0
+            "--kl_weight", action="store", help="KL factor", type=float, default=0.0
         )
 
         group.add_argument(
@@ -438,7 +448,7 @@ def get_parse_opt():
             action="store",
             help="stop the training if the rmse is reached",
             type=float,
-            default=0.0
+            default=0.0,
         )
 
         group.add_argument(
@@ -446,7 +456,7 @@ def get_parse_opt():
             action="store",
             help="Path and file name to load pre-trained DNN parameters from",
             type=str,
-            default=None
+            default=None,
         )
 
         group.add_argument(
@@ -454,7 +464,7 @@ def get_parse_opt():
             action="store",
             help="Path and file name to load pre-trained BNN parameters from",
             type=str,
-            default=None
+            default=None,
         )
 
         group.add_argument(
@@ -462,16 +472,16 @@ def get_parse_opt():
             action="store",
             help="if there is a key the model weights and biases are stored give it here",
             type=str,
-            default="nn"
+            default="nn",
         )
 
         group.add_argument(
             "--update_bnn_variance",
             action="store",
             help="If you load a pretrained BNN but want to update the varience of the parameters set a fraction between "
-                 "0.0 and 1.0.",
+            "0.0 and 1.0.",
             type=float,
-            default=None
+            default=None,
         )
 
         group.add_argument(
@@ -479,45 +489,39 @@ def get_parse_opt():
             action="store",
             help="Name for the model sor reference later on",
             type=str,
-            default="dnn_name"
+            default="dnn_name",
         )
 
         group.add_argument(
             "--mutate_index",
             action="store",
             help="Permute dataset swapping examples in training and validation set using this index as a random"
-                  "seed. None will not permute the data set beyond the normal loading",
+            "seed. None will not permute the data set beyond the normal loading",
             type=int,
-            default=None
+            default=None,
         )
         group.add_argument(
             "--no_mu_opt",
             action="store_true",
             help="Whether to omit training the mean weights of the BNN",
-            default=False
+            default=False,
         )
 
         group.add_argument(
             "--no_sig_opt",
             action="store_true",
             help="Whether to omit training the sigma weights of the BNN",
-            default=False
+            default=False,
         )
 
         group = parser.add_argument_group("Running options")
 
         group.add_argument(
-            "--train_ani_dnn",
-            action="store_true",
-            help="Train a DNN",
-            default=False
+            "--train_ani_dnn", action="store_true", help="Train a DNN", default=False
         )
 
         group.add_argument(
-            "--train_ani_bnn",
-            action="store_true",
-            help="Train a BNN",
-            default=False
+            "--train_ani_bnn", action="store_true", help="Train a BNN", default=False
         )
 
         group.add_argument(
@@ -525,51 +529,48 @@ def get_parse_opt():
             action="store",
             type=int,
             help="Number of concurrent models to train as an ensemble prediction",
-            default=1
+            default=1,
         )
 
         group.add_argument(
             "--set_rho_explicit",
             action="store_true",
             help="If params prior is being used will set rho values using the params prior",
-            default=False
+            default=False,
         )
 
         group.add_argument(
             "--set_prior_explicit",
             action="store_true",
             help="If params prior is being used will set prior values using the params prior",
-            default=False
+            default=False,
         )
 
         group.add_argument(
             "--use_cuaev",
             action="store_true",
             help="Use the cuda ave codes note these are installed separately from ani library",
-            default=False
+            default=False,
         )
 
         group = parser.add_argument_group("Logging arguments")
 
         group.add_argument(
-            "--loglevel",
-            action="store",
-            default="INFO",
-            help="log level"
+            "--loglevel", action="store", default="INFO", help="log level"
         )
 
         group.add_argument(
             "--parallel",
             action="store_true",
             help="Run using data parallel pytorch stratergy",
-            default=False
+            default=False,
         )
 
         group.add_argument(
             "--reset_lr",
             action="store_true",
             default=False,
-            help = "do not use the lr from checkpoint"
+            help="do not use the lr from checkpoint",
         )
 
         opt = parser.parse_args()
@@ -578,12 +579,11 @@ def get_parse_opt():
 
     except argparse.ArgumentError as err:
 
-        print("\nERROR - command line arguments are ill defined please check the arguments\n")
+        print(
+            "\nERROR - command line arguments are ill defined please check the arguments\n"
+        )
         raise err
 
-def kcalmol2hartree(x):
-    r"""kcal/mol to Hartree conversion factor from CODATA 2014"""
-    return x * (1.0000000000 / torchani.units.HARTREE_TO_KCALMOL)
 
 def run():
     """
@@ -596,12 +596,19 @@ def run():
     setup_logger(os.getcwd(), opt.loglevel)
     log = logging.getLogger(__name__)
 
-    log.info("\n--------------------------------------------------------------------------------------------------\n"
-             "\nAuthors       : {}\nOrganisation  : {}\nCreated On    : {}\n"
-             "Program       : {}\nVersion       : {}\nDescription   : {}\n"
-             "---------------------------------------------------------------------------------------------------\n"
-             .format(__authors__, __organisation__, __created__, __title__, __version__, __description__)
-             )
+    log.info(
+        "\n--------------------------------------------------------------------------------------------------\n"
+        "\nAuthors       : {}\nOrganisation  : {}\nCreated On    : {}\n"
+        "Program       : {}\nVersion       : {}\nDescription   : {}\n"
+        "---------------------------------------------------------------------------------------------------\n".format(
+            __authors__,
+            __organisation__,
+            __created__,
+            __title__,
+            __version__,
+            __description__,
+        )
+    )
 
     log.info("Command line input =\n\t{}".format(opt))
 
@@ -618,7 +625,10 @@ def run():
     np.random.seed(opt.random_seed)
     random.seed(opt.random_seed)
 
-    if len(opt.species_indicies) == 1 and opt.species_indicies[0].strip().lower() == "periodic_table":
+    if (
+        len(opt.species_indicies) == 1
+        and opt.species_indicies[0].strip().lower() == "periodic_table"
+    ):
         opt.species_indicies = "periodic_table"
     log.info("Species indicies: {}".format(opt.species_indicies))
 
@@ -636,42 +646,50 @@ def run():
         if not isinstance(opt.self_energies, np.ndarray):
             opt.self_energies = np.array(opt.self_energies)
 
+    ani_class = ANI(
+        forces=opt.forces,
+        force_scalar=opt.force_scalar,
+        self_energies=opt.self_energies,
+    )
 
-    ani_class = ANI(forces=opt.forces, force_scalar=opt.force_scalar, self_energies=opt.self_energies)
+    train_data, val_data, test_data = network_data_loader.load_ani_data(
+        ani_class.energy_shifter,
+        opt.species_order,
+        opt.data,
+        opt.batch_size,
+        opt.train_size,
+        opt.validation_size,
+        forces=opt.forces,
+        no_reload=opt.no_reload,
+        species_indicies=opt.species_indicies,
+        data_pkl_path=opt.data_pkl_path,
+        mutate_datasets=opt.mutate_index,
+        random_seed=opt.random_seed,
+    )
 
-    train_data, val_data, test_data = network_data_loader.load_ani_data(ani_class.energy_shifter,
-                                                                        opt.species_order,
-                                                                        opt.data,
-                                                                        opt.batch_size,
-                                                                        opt.train_size,
-                                                                        opt.validation_size,
-                                                                        forces=opt.forces,
-                                                                        no_reload=opt.no_reload,
-                                                                        species_indicies=opt.species_indicies,
-                                                                        data_pkl_path = opt.data_pkl_path,
-                                                                        mutate_datasets=opt.mutate_index,
-                                                                        random_seed=opt.random_seed
-                                                                        )
-
-    ani_class.build_ani_dnn_model(opt.radial_cutoff,
-                                  opt.theta_max_rad,
-                                  opt.angular_cutoff,
-                                  opt.etar,
-                                  opt.etaa,
-                                  opt.zeta,
-                                  opt.radial_steps,
-                                  opt.angular_radial_steps,
-                                  opt.theta_steps,
-                                  opt.species_order,
-                                  networks=None,
-                                  ensemble=opt.ensemble,
-                                  use_cuaev=opt.use_cuaev,
-                                  no_species_converter=False if opt.species_indicies == "periodic_table" else True
-                                  )
+    ani_class.build_ani_dnn_model(
+        opt.radial_cutoff,
+        opt.theta_max_rad,
+        opt.angular_cutoff,
+        opt.etar,
+        opt.etaa,
+        opt.zeta,
+        opt.radial_steps,
+        opt.angular_radial_steps,
+        opt.theta_steps,
+        opt.species_order,
+        networks=None,
+        ensemble=opt.ensemble,
+        use_cuaev=opt.use_cuaev,
+        no_species_converter=False
+        if opt.species_indicies == "periodic_table"
+        else True,
+    )
 
     if opt.load_pretrained_parameters_dnn is not None:
-        ani_class.load_pretrained_on_to_model(opt.load_pretrained_parameters_dnn,
-                                              model_key=opt.pretrained_model_key)
+        ani_class.load_pretrained_on_to_model(
+            opt.load_pretrained_parameters_dnn, model_key=opt.pretrained_model_key
+        )
 
     log.info(f"\nIs initial network bayesian: {ani_class.isbayesian}")
     log.info(f"Train using forces for ANI {ani_class.uses_forces}\n")
@@ -680,15 +698,16 @@ def run():
         log.info("\nRequest to train DNN")
     elif opt.train_ani_bnn is True:
         log.info("\nRequest to train BNN")
-        bayesian_priors = bnn_priors(opt.reparameterization,
-                                     opt.flipout,
-                                     opt.prior_mu,
-                                     opt.prior_sigma,
-                                     opt.posterior_mu_init,
-                                     opt.posterior_rho_init,
-                                     opt.moped_enable,
-                                     opt.moped_delta
-                                     )
+        bayesian_priors = bnn_priors(
+            opt.reparameterization,
+            opt.flipout,
+            opt.prior_mu,
+            opt.prior_sigma,
+            opt.posterior_mu_init,
+            opt.posterior_rho_init,
+            opt.moped_enable,
+            opt.moped_delta,
+        )
         params_prior = None
 
         if opt.params_prior is not None and opt.params_prior.strip().lower() != "ani":
@@ -704,34 +723,42 @@ def run():
                 # and the number of the ensemble elements using a BNN we only have one member of the ensemble so it
                 # is always 0.
                 log.info(f"Params prior: is ani loading mean values of ani models")
-                for il,layer in enumerate(ani_class.model):
+                for il, layer in enumerate(ani_class.model):
                     if re.search(r"^Ensemble", str(layer)):
                         log.info("Network layer found number {}".format(il))
                         network_layer_number = il
                     log.debug(f"Layer: {layer}")
                 params_prior = network_utilities.get_ani_parameter_distrbutions(
                     species_order=tuple(opt.species_order),
-                    prepend_key="{}.0.".format(network_layer_number))
+                    prepend_key="{}.0.".format(network_layer_number),
+                )
         else:
-            log.info(f"Params prior not given or asked for 'ani' will initialize using the dnn.")
+            log.info(
+                f"Params prior not given or asked for 'ani' will initialize using the dnn."
+            )
             params_prior = None
 
         # Note the options are to not set the parameters explicitly as the default is to set them explicitly
         # the function arguments though are set assuming the opposite hence not.
-        #log.debug(f"{opt.no_set_rho_explicit}, {not opt.no_set_rho_explicit}\n"
+        # log.debug(f"{opt.no_set_rho_explicit}, {not opt.no_set_rho_explicit}\n"
         #         f"{opt.no_set_rho_explicit}, {not opt.no_set_rho_explicit}")
-        ani_class.transfer_dnn_to_bnn(bnn_prior=bayesian_priors,
-                                      params_prior=params_prior,
-                                      set_rho_explicitly=opt.set_rho_explicit,
-                                      set_prior_explicitly=opt.set_rho_explicit)
+        ani_class.transfer_dnn_to_bnn(
+            bnn_prior=bayesian_priors,
+            params_prior=params_prior,
+            set_rho_explicitly=opt.set_rho_explicit,
+            set_prior_explicitly=opt.set_rho_explicit,
+        )
 
         log.info(ani_class._network_layer_indx)
         if opt.load_pretrained_parameters_bnn is not None:
-            ani_class.load_pretrained_on_to_model(opt.load_pretrained_parameters_bnn,
-                                                  model_key=opt.pretrained_model_key)
+            ani_class.load_pretrained_on_to_model(
+                opt.load_pretrained_parameters_bnn, model_key=opt.pretrained_model_key
+            )
 
         if opt.update_bnn_variance is not None:
-            log.info(f"\nUpdating BNN variance to {opt.update_bnn_variance} fraction of the mean weight and bias")
+            log.info(
+                f"\nUpdating BNN variance to {opt.update_bnn_variance} fraction of the mean weight and bias"
+            )
 
             updated_bnn_prior = bnn_priors(
                 opt.reparameterization,
@@ -741,17 +768,20 @@ def run():
                 opt.posterior_mu_init,
                 opt.posterior_rho_init,
                 opt.moped_enable,
-                opt.update_bnn_variance
+                opt.update_bnn_variance,
             )
 
-            update_bnn_variance(ani_class.model,
-                                bnn_prior=updated_bnn_prior,
-                                params_prior=None,
-                                bayesian_depth=opt.bayesian_depth
-                                )
+            update_bnn_variance(
+                ani_class.model,
+                bnn_prior=updated_bnn_prior,
+                params_prior=None,
+                bayesian_depth=opt.bayesian_depth,
+            )
 
-            log.info("BNN variance update completed. (NOTE: if you want to update with tests use the method in "
-                     "network_utilities\n")
+            log.info(
+                "BNN variance update completed. (NOTE: if you want to update with tests use the method in "
+                "network_utilities\n"
+            )
 
         log.info(f"bnn network is bayesian: {ani_class.isbayesian}\n")
 
@@ -768,56 +798,58 @@ def run():
 
     log.info("\n\nUntrained testing .....\n")
     ani_class.model.to(device)
-    network_test.test(ani_class,
-                      test_data,
-                      mc_runs=opt.test_mc_runs,
-                      plot=True,
-                      plot_name_unique_prepend="initial_"
-                      )
+    network_test.test(
+        ani_class,
+        test_data,
+        mc_runs=opt.test_mc_runs,
+        plot=True,
+        plot_name_unique_prepend="initial_",
+    )
     log.info("Finalized untrained testing .....\n")
 
     log.info("\n\nBeginning training .....\n")
-    network_train.train(ani_class,
-                        train_data,
-                        val_data,
-                        test_data,
-                        checkpoint_filename=opt.checkpoint_filename,
-                        learning_curve_csv_filename=opt.learning_curve_csv_filename,
-                        max_epochs=opt.max_epochs,
-                        early_stopping_learning_rate=opt.early_stopping_learning_rate,
-                        train_mc_runs=opt.train_mc_runs,
-                        test_mc_runs=opt.test_mc_runs,
-                        kl_weight=opt.kl_weight,
-                        learning_rate=opt.learning_rate,
-                        bayesian_depth=opt.bayesian_depth,
-                        mu_opt=not opt.no_mu_opt,
-                        sig_opt=not opt.no_sig_opt,
-                        lml=opt.lml,
-                        use_schedulers=opt.use_schedulers,
-                        checkpoint_dnn=opt.load_pretrained_parameters_dnn,
-                        checkpoint_bnn=opt.load_pretrained_parameters_bnn,
-                        reset_lr = opt.reset_lr,
-                        min_rmse = opt.min_rmse
-                        )
+    network_train.train(
+        ani_class,
+        train_data,
+        val_data,
+        test_data,
+        checkpoint_filename=opt.checkpoint_filename,
+        learning_curve_csv_filename=opt.learning_curve_csv_filename,
+        max_epochs=opt.max_epochs,
+        early_stopping_learning_rate=opt.early_stopping_learning_rate,
+        train_mc_runs=opt.train_mc_runs,
+        test_mc_runs=opt.test_mc_runs,
+        kl_weight=opt.kl_weight,
+        learning_rate=opt.learning_rate,
+        bayesian_depth=opt.bayesian_depth,
+        mu_opt=not opt.no_mu_opt,
+        sig_opt=not opt.no_sig_opt,
+        lml=opt.lml,
+        use_schedulers=opt.use_schedulers,
+        checkpoint_dnn=opt.load_pretrained_parameters_dnn,
+        checkpoint_bnn=opt.load_pretrained_parameters_bnn,
+        reset_lr=opt.reset_lr,
+        min_rmse=opt.min_rmse,
+    )
 
     log.info("Finalized training .....\n")
 
     log.info(f"Is network for test bayesian: {ani_class.isbayesian}")
 
     log.info("\n\nBeginning testing .....\n")
-    network_test.test(ani_class,
-                      test_data,
-                      mc_runs=opt.test_mc_runs,
-                      plot=True
-                      )
+    network_test.test(ani_class, test_data, mc_runs=opt.test_mc_runs, plot=True)
     log.info("Finalized testing .....\n")
 
-    log.info("Completing ANI model by adding energy shifter to include atomic self energies")
+    log.info(
+        "Completing ANI model by adding energy shifter to include atomic self energies"
+    )
     ani_class.complete_model()
     log.info(f"Is the ANI model complete: {ani_class.iscomplete}")
 
     log.info("\n\nPredicting H2 molecule energy.")
-    coordin = torch.tensor([[[0, 0, 0], [0, 0, 0.7]]], requires_grad=False, device=device)
+    coordin = torch.tensor(
+        [[[0, 0, 0], [0, 0, 0.7]]], requires_grad=False, device=device
+    )
     # In periodic table, C = 8 and H = 1
     if opt.species_indicies == "periodic_table":
         specs = torch.tensor([[1, 1]], device=device)
@@ -841,6 +873,7 @@ def run():
         log.info(f"H2 molecule energy predicted to be {ener} uncertainty {ener_u} Ha")
 
     ani_class.save()
+
 
 if __name__ == "__main__":
     run()
